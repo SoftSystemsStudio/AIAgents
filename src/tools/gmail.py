@@ -262,7 +262,7 @@ class GmailClient:
 # Tool Handler Functions (module-level for registry)
 # ============================================================================
 
-async def list_emails(query: str = "is:unread in:inbox", max_results: int = 20) -> str:
+async def list_emails(query: str = "is:unread", max_results: int = 20) -> str:
     """List emails matching query."""
     client = get_gmail_client()
     
@@ -398,14 +398,14 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
     _gmail_client = GmailClient(credentials_path)
     
     async def list_emails(
-        query: str = "is:unread in:inbox",
+        query: str = "is:unread",
         max_results: int = 20,
     ) -> str:
         """
         List emails matching query.
         
         Args:
-            query: Gmail search query (e.g., 'is:unread in:inbox', 'from:notifications@', 'older_than:30d')
+            query: Gmail search query (default: 'is:unread' for ALL unread. Use 'is:unread in:inbox' for inbox only, 'from:sender@', 'older_than:30d', etc.)
             max_results: Maximum emails to show details for (default: 20)
             
         Returns:
@@ -576,7 +576,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="query",
                     type="string",
-                    description="Gmail search query (default: 'is:unread in:inbox'. Examples: 'is:unread', 'from:notifications@', 'older_than:30d', 'in:sent')",
+                    description="Gmail search query (default: 'is:unread' for ALL unread emails. Use 'is:unread in:inbox' for inbox only, 'from:sender@', 'older_than:30d', etc.)",
                     required=False,
                 ),
                 ToolParameter(
