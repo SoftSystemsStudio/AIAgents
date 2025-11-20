@@ -1,1 +1,377 @@
 # AIAgents
+
+[![CI/CD](https://github.com/SoftSystemsStudio/AIAgents/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/SoftSystemsStudio/AIAgents/actions)
+[![codecov](https://codecov.io/gh/SoftSystemsStudio/AIAgents/branch/main/graph/badge.svg)](https://codecov.io/gh/SoftSystemsStudio/AIAgents)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Production-grade modular AI agents platform built with clean architecture principles. Optimized for reliability, observability, and maintainability.
+
+## 🎯 Philosophy
+
+This platform prioritizes:
+- **Clean Architecture**: Domain-driven design with clear separation of concerns
+- **Production Readiness**: Comprehensive observability, error handling, and testing
+- **Modularity**: Swap LLM providers, vector stores, and message queues without changing business logic
+- **Type Safety**: Full Pydantic validation and mypy type checking
+- **Testability**: Dependency injection and interface-based design
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│           Presentation Layer                │
+│         (API, CLI, WebSocket)               │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────┐
+│         Application Layer                   │
+│  • Use Cases                                │
+│  • Orchestration                            │
+│  • Workflow Management                      │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────┐
+│           Domain Layer                      │
+│  • Business Logic (Agents, Tools)           │
+│  • Domain Models                            │
+│  • Service Interfaces                       │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────┐
+│       Infrastructure Layer                  │
+│  • LLM Providers (OpenAI, Anthropic)        │
+│  • Vector Stores (Qdrant, Chroma)           │
+│  • Message Queues (Redis)                   │
+│  • Observability (Logs, Traces, Metrics)    │
+└─────────────────────────────────────────────┘
+```
+
+### Core Components
+
+- **Domain Models**: `Agent`, `Message`, `Tool`, `ExecutionResult`
+- **Orchestrator**: Manages agent execution loops, tool calling, and iteration limits
+- **Infrastructure Adapters**: Pluggable implementations for external services
+- **Observability**: Structured logging, distributed tracing, and Prometheus metrics
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Docker & Docker Compose (for local services)
+- API keys for LLM providers (OpenAI, Anthropic)
+
+### Installation
+
+```bash
+# Clone repository
+git clone https://github.com/SoftSystemsStudio/AIAgents.git
+cd AIAgents
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+make install-dev
+
+# Copy environment template
+cp .env.example .env
+# Edit .env and add your API keys
+
+# Start infrastructure services
+make docker-up
+```
+
+### Your First Agent
+
+```python
+from src.domain.models import Agent, AgentCapability
+from src.infrastructure.llm_providers import OpenAIProvider
+from src.infrastructure.repositories import InMemoryAgentRepository, InMemoryToolRegistry
+from src.infrastructure.observability import StructuredLogger
+from src.application.orchestrator import AgentOrchestrator
+from src.application.use_cases import CreateAgentUseCase, ExecuteAgentUseCase
+
+# Initialize infrastructure
+llm_provider = OpenAIProvider(api_key="your-api-key")
+agent_repo = InMemoryAgentRepository()
+tool_registry = InMemoryToolRegistry()
+observability = StructuredLogger(log_level="INFO")
+
+# Create orchestrator
+orchestrator = AgentOrchestrator(
+    llm_provider=llm_provider,
+    tool_registry=tool_registry,
+    agent_repository=agent_repo,
+    observability=observability,
+)
+
+# Create an agent
+create_agent = CreateAgentUseCase(agent_repo)
+agent = await create_agent.execute(
+    name="research_assistant",
+    description="Helps with research tasks",
+    system_prompt="You are a helpful research assistant. Provide clear, accurate information.",
+    model_provider="openai",
+    model_name="gpt-4",
+    capabilities=[AgentCapability.WEB_SEARCH],
+)
+
+# Execute agent
+execute_agent = ExecuteAgentUseCase(agent_repo, orchestrator)
+result = await execute_agent.execute(
+    agent_id=agent.id,
+    user_input="What are the latest developments in AI agents?",
+)
+
+print(f"Output: {result.output}")
+print(f"Tokens: {result.total_tokens}")
+print(f"Cost: ${result.estimated_cost:.4f}")
+```
+
+## 📦 Project Structure
+
+```
+AIAgents/
+├── src/
+│   ├── domain/              # Business logic & abstractions
+│   │   ├── models.py        # Core entities (Agent, Message, Tool)
+│   │   ├── interfaces.py    # Service interfaces
+│   │   └── exceptions.py    # Domain exceptions
+│   │
+│   ├── application/         # Use cases & orchestration
+│   │   ├── orchestrator.py  # Agent execution engine
+│   │   └── use_cases.py     # Business workflows
+│   │
+│   ├── infrastructure/      # External integrations
+│   │   ├── llm_providers.py # OpenAI, Anthropic adapters
+│   │   ├── vector_stores.py # Qdrant, Chroma adapters
+│   │   ├── message_queue.py # Redis pub/sub
+│   │   ├── repositories.py  # Data access
+│   │   └── observability.py # Logging, tracing, metrics
+│   │
+│   └── config.py            # Configuration management
+│
+├── tests/
+│   ├── conftest.py          # Test fixtures
+│   ├── test_domain_models.py
+│   ├── test_repositories.py
+│   └── mock_tools.py
+│
+├── docs/                    # Additional documentation
+├── .github/                 # CI/CD workflows
+├── pyproject.toml           # Project metadata & dependencies
+├── Makefile                 # Development commands
+└── docker-compose.yml       # Local infrastructure
+```
+
+## 🔧 Configuration
+
+Configuration is managed through environment variables and `.env` files:
+
+```bash
+# LLM Providers
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Vector Database
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# Observability
+LOG_LEVEL=INFO
+ENABLE_TRACING=true
+ENABLE_METRICS=true
+METRICS_PORT=9090
+```
+
+See `.env.example` for complete configuration options.
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+make test
+
+# Run unit tests only
+make test-unit
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test
+pytest tests/test_domain_models.py -v
+```
+
+## 📊 Observability
+
+### Structured Logging
+
+All logs are JSON-formatted with context:
+
+```json
+{
+  "event": "agent_execution_started",
+  "level": "info",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "agent_id": "uuid-here",
+  "agent_name": "research_assistant",
+  "user_input": "..."
+}
+```
+
+### Distributed Tracing
+
+Integrated with OpenTelemetry for distributed tracing:
+
+```python
+with observability.start_span("agent_execution") as span:
+    span.set_attribute("agent_id", str(agent.id))
+    result = await orchestrator.execute_agent(agent, user_input)
+```
+
+### Metrics
+
+Prometheus metrics exposed on `:9090/metrics`:
+
+- `agent_execution_duration_seconds` - Execution time histogram
+- `agent_execution_total` - Counter by status
+- `llm_tokens_total` - Token usage by model
+- `llm_cost_usd_total` - Cost tracking
+- `tool_invocation_total` - Tool usage counter
+
+## 🛡️ Error Handling & Guardrails
+
+### Built-in Safeguards
+
+- **Timeouts**: Configurable per-agent execution timeouts
+- **Iteration Limits**: Prevent infinite loops in agent reasoning
+- **Rate Limiting**: Token and request rate limits
+- **Permission System**: Capability-based tool access control
+- **Validation**: Comprehensive input validation with Pydantic
+
+### Error Recovery
+
+- **Automatic Retries**: Exponential backoff for transient failures
+- **Graceful Degradation**: Fallback strategies for service failures
+- **Detailed Error Messages**: Actionable error information
+
+## 🔌 Extending the Platform
+
+### Adding a New LLM Provider
+
+```python
+from src.domain.interfaces import ILLMProvider
+from src.domain.models import Message
+
+class CustomLLMProvider(ILLMProvider):
+    async def generate_completion(
+        self, messages: List[Message], model: str, **kwargs
+    ) -> Message:
+        # Your implementation
+        pass
+```
+
+### Creating Custom Tools
+
+```python
+from src.domain.models import Tool, ToolParameter, AgentCapability
+
+# Define tool
+calculator = Tool(
+    name="calculate",
+    description="Perform mathematical calculations",
+    parameters=[
+        ToolParameter(name="expression", type="string", description="Math expression", required=True)
+    ],
+    handler_module="my_tools",
+    handler_function="calculate_handler",
+)
+
+# Register tool
+tool_registry.register_tool(calculator)
+
+# Implement handler
+def calculate_handler(expression: str) -> dict:
+    result = eval(expression)  # In production, use safe parser
+    return {"result": result}
+```
+
+## 📝 Development
+
+```bash
+# Format code
+make format
+
+# Lint
+make lint
+
+# Type check
+make type-check
+
+# Install pre-commit hooks
+pre-commit install
+
+# Run all checks
+make format lint type-check test
+```
+
+## ⚠️ TODOs & Known Risks
+
+### High Priority
+- [ ] Implement persistent storage (PostgreSQL) for production
+- [ ] Add request/response caching to reduce costs
+- [ ] Implement dead letter queue for failed tasks
+- [ ] Add circuit breaker pattern for external services
+- [ ] Implement agent checkpointing for long-running tasks
+
+### Risks & Mitigations
+1. **LLM Provider Reliability**: Mitigated with retry logic and exponential backoff
+2. **Cost Management**: Token counting, rate limits, and cost tracking
+3. **Security**: Input validation, capability system, no eval of untrusted code
+4. **Memory Leaks**: Timeout enforcement and memory limits per execution
+5. **Message Queue Persistence**: Redis is in-memory; consider persistent queue for critical workflows
+
+### Performance Considerations
+- Vector store performance degrades with large collections (monitor and shard)
+- LLM latency can be 2-10s per call (consider streaming for UX)
+- Tool execution is synchronous (parallel execution coming)
+
+## 📚 Additional Resources
+
+- [Architecture Decision Records](docs/architecture.md)
+- [Tool Development Guide](docs/tools.md)
+- [Deployment Guide](docs/deployment.md)
+- [API Reference](docs/api.md)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes with tests
+4. Run all checks (`make format lint type-check test`)
+5. Commit with clear messages
+6. Push and create a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+Built with:
+- [Pydantic](https://docs.pydantic.dev/) for data validation
+- [structlog](https://www.structlog.org/) for structured logging
+- [OpenTelemetry](https://opentelemetry.io/) for observability
+- [Qdrant](https://qdrant.tech/) for vector search
+
+---
+
+**Maintainer**: AI Platform Team  
+**Status**: Alpha - Production patterns, active development
