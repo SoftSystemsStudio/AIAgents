@@ -146,9 +146,10 @@ class GmailClient:
             all_messages = []
             page_token = None
             
-            while len(all_messages) < max_results:
+            while True:
                 # Gmail API max is 500 per request
-                page_size = min(500, max_results - len(all_messages))
+                remaining = max_results - len(all_messages) if max_results else 500
+                page_size = min(500, remaining) if max_results else 500
                 
                 results = self.service.users().messages().list(
                     userId='me',
@@ -164,14 +165,52 @@ class GmailClient:
                 
                 all_messages.extend(messages)
                 
-                # Check if there are more pages
+                # Check if we've reached the limit or no more pages
                 page_token = results.get('nextPageToken')
-                if not page_token:
+                if not page_token or (max_results and len(all_messages) >= max_results):
                     break
             
             return all_messages
         except Exception as e:
             raise Exception(f"Failed to list messages: {str(e)}")
+    
+    def count_messages(self, query: str = '') -> int:
+        """
+        Count total messages matching query by paginating through all results.
+        More accurate than list_messages with a limit.
+        
+        Args:
+            query: Gmail search query
+            
+        Returns:
+            Total count of matching messages
+        """
+        try:
+            total_count = 0
+            page_token = None
+            
+            while True:
+                results = self.service.users().messages().list(
+                    userId='me',
+                    q=query,
+                    maxResults=500,  # Max per page
+                    pageToken=page_token,
+                ).execute()
+                
+                messages = results.get('messages', [])
+                if not messages:
+                    break
+                
+                total_count += len(messages)
+                
+                # Check if there are more pages
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
+            
+            return total_count
+        except Exception as e:
+            raise Exception(f"Failed to count messages: {str(e)}")
     
     def get_message(self, message_id: str) -> Dict[str, Any]:
         """Get full message details."""
@@ -239,17 +278,22 @@ class GmailClient:
 # Tool Handler Functions (module-level for registry)
 # ============================================================================
 
-async def list_emails(query: str = "is:unread", max_results: int = 5000) -> str:
+async def list_emails(query: str = "is:unread", max_results: int = 20) -> str:
     """List emails matching query."""
     client = get_gmail_client()
-    messages = client.list_messages(query=query, max_results=max_results)
     
-    if not messages:
+    # First get accurate count
+    total_count = client.count_messages(query=query)
+    
+    if total_count == 0:
         return f"No emails found matching query: {query}"
+    
+    # Then get details for display (limited)
+    messages = client.list_messages(query=query, max_results=max_results)
     
     # Get details for each message
     email_summaries = []
-    for msg in messages[:20]:  # Show first 20 in detail
+    for msg in messages:
         try:
             details = client.get_message(msg['id'])
             headers = {h['name']: h['value'] for h in details['payload']['headers']}
@@ -267,8 +311,8 @@ async def list_emails(query: str = "is:unread", max_results: int = 5000) -> str:
                 'error': str(e),
             })
     
-    # Format response
-    response = f"Found {len(messages)} emails matching '{query}':\n\n"
+    # Format response with accurate total count
+    response = f"Found {total_count} emails matching '{query}':\n\n"
     for idx, email in enumerate(email_summaries, 1):
         if 'error' in email:
             response += f"{idx}. ID: {email['id']} (Error: {email['error']})\n"
@@ -279,8 +323,8 @@ async def list_emails(query: str = "is:unread", max_results: int = 5000) -> str:
             response += f"   Snippet: {email['snippet']}...\n"
             response += f"   ID: {email['id']}\n\n"
     
-    if len(messages) > 20:
-        response += f"\n... and {len(messages) - 20} more emails."
+    if total_count > len(email_summaries):
+        response += f"\n... and {total_count - len(email_summaries)} more emails."
     
     return response
 
@@ -371,26 +415,30 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
     
     async def list_emails(
         query: str = "is:unread",
-        max_results: int = 5000,
+        max_results: int = 20,
     ) -> str:
         """
         List emails matching query.
         
         Args:
             query: Gmail search query (e.g., 'is:unread', 'from:notifications@', 'older_than:30d')
-            max_results: Maximum emails to return (default: 5000)
+            max_results: Maximum emails to show details for (default: 20, total count is always accurate)
             
         Returns:
-            Summary of matching emails
+            Summary of matching emails with accurate total count
         """
-        messages = client.list_messages(query=query, max_results=max_results)
+        # Get accurate total count
+        total_count = client.count_messages(query=query)
         
-        if not messages:
+        if total_count == 0:
             return f"No emails found matching query: {query}"
+        
+        # Get details for display (limited)
+        messages = client.list_messages(query=query, max_results=max_results)
         
         # Get details for each message
         email_summaries = []
-        for msg in messages[:20]:  # Show first 20 in detail
+        for msg in messages:
             try:
                 details = client.get_message(msg['id'])
                 headers = {h['name']: h['value'] for h in details['payload']['headers']}
@@ -408,8 +456,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                     'error': str(e),
                 })
         
-        # Format response
-        response = f"Found {len(messages)} emails matching '{query}':\n\n"
+        # Format response with accurate total count
+        response = f"Found {total_count} emails matching '{query}':\n\n"
         for idx, email in enumerate(email_summaries, 1):
             if 'error' in email:
                 response += f"{idx}. ID: {email['id']} (Error: {email['error']})\n"
@@ -420,8 +468,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 response += f"   Snippet: {email['snippet']}...\n"
                 response += f"   ID: {email['id']}\n\n"
         
-        if len(messages) > 20:
-            response += f"\n... and {len(messages) - 20} more emails."
+        if total_count > len(email_summaries):
+            response += f"\n... and {total_count - len(email_summaries)} more emails."
         
         return response
     
@@ -550,7 +598,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="max_results",
                     type="integer",
-                    description="Maximum emails to return (default: 5000)",
+                    description="Maximum emails to show details for (default: 20, but total count is always accurate)",
                     required=False,
                 ),
             ],
