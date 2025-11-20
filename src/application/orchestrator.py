@@ -6,7 +6,7 @@ Orchestrates agent execution, tool calls, and conversation flow.
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 from uuid import UUID
 
 from src.domain.exceptions import (
@@ -367,3 +367,84 @@ class AgentOrchestrator:
             )
 
         return 0.0
+
+    async def stream_agent_response(
+        self,
+        agent: Agent,
+        user_input: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> AsyncIterator[str]:
+        """
+        Stream agent response in real-time.
+        
+        Similar to execute_agent but yields tokens as they arrive.
+        
+        Note: Tool calling is not supported in streaming mode.
+        Returns only the first LLM response without tool execution.
+        
+        Args:
+            agent: Agent to execute
+            user_input: User's input message
+            context: Optional context
+            
+        Yields:
+            Response tokens as they arrive
+        """
+        try:
+            # Update agent status
+            agent.update_status(AgentStatus.RUNNING)
+            await self.agent_repository.save(agent)
+
+            # Log execution start
+            if self.observability:
+                self.observability.log(
+                    "info",
+                    f"Starting streaming agent execution: {agent.name}",
+                    {"agent_id": str(agent.id), "user_input": user_input},
+                )
+
+            # Add user message
+            user_message = Message(role=MessageRole.USER, content=user_input)
+            agent.add_message(user_message)
+
+            # Stream LLM response (no tool support)
+            full_response = []
+            async for token in self.llm_provider.stream_completion(
+                messages=agent.conversation_history,
+                model=agent.model_name,
+                temperature=agent.temperature,
+                max_tokens=agent.max_tokens,
+            ):
+                full_response.append(token)
+                yield token
+
+            # Add complete response to history
+            response_content = "".join(full_response)
+            response_message = Message(
+                role=MessageRole.ASSISTANT,
+                content=response_content,
+            )
+            agent.add_message(response_message)
+
+            # Update agent status
+            agent.update_status(AgentStatus.COMPLETED)
+            await self.agent_repository.save(agent)
+
+            if self.observability:
+                self.observability.log(
+                    "info",
+                    f"Streaming agent execution completed: {agent.name}",
+                    {"agent_id": str(agent.id)},
+                )
+
+        except Exception as e:
+            agent.update_status(AgentStatus.FAILED)
+            await self.agent_repository.save(agent)
+
+            if self.observability:
+                self.observability.log(
+                    "error",
+                    f"Streaming agent execution failed: {agent.name}",
+                    {"agent_id": str(agent.id), "error": str(e)},
+                )
+            raise AgentExecutionError(str(agent.id), str(e))

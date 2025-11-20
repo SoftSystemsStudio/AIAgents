@@ -408,6 +408,74 @@ async def execute_agent(agent_id: UUID, request: ExecuteAgentRequest, background
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
+@app.post("/agents/{agent_id}/stream", tags=["Execution"])
+async def stream_agent_response(agent_id: UUID, request: ExecuteAgentRequest):
+    """
+    Stream agent response in real-time.
+    
+    Returns a server-sent events (SSE) stream with tokens as they arrive.
+    Provides better UX for chat interfaces.
+    
+    Note: Tool calling is not supported in streaming mode.
+    """
+    agent_repo = _dependencies["agent_repo"]
+    orchestrator = _dependencies["orchestrator"]
+    observability = _dependencies["observability"]
+    
+    observability.log("info", "Starting streaming execution", {
+        "agent_id": str(agent_id),
+        "input_length": len(request.user_input)
+    })
+    
+    try:
+        # Get agent
+        use_case = GetAgentUseCase(agent_repo)
+        agent = await use_case.execute_by_id(agent_id)
+        
+        async def event_generator():
+            """Generate SSE events for streaming."""
+            try:
+                async for token in orchestrator.stream_agent_response(
+                    agent=agent,
+                    user_input=request.user_input,
+                ):
+                    # Send token as SSE
+                    yield f"data: {token}\n\n"
+                
+                # Send completion marker
+                yield "data: [DONE]\n\n"
+                
+                observability.log("info", "Streaming execution completed", {
+                    "agent_id": str(agent_id),
+                })
+                
+            except Exception as e:
+                observability.log("error", "Streaming execution failed", {
+                    "agent_id": str(agent_id),
+                    "error": str(e)
+                })
+                yield f"data: [ERROR] {str(e)}\n\n"
+        
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+            },
+        )
+        
+    except AgentNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+    except Exception as e:
+        observability.log("error", "Failed to start streaming", {
+            "agent_id": str(agent_id),
+            "error": str(e)
+        })
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
 @app.get("/metrics", tags=["Monitoring"])
 async def get_metrics():
     """

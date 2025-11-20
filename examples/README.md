@@ -99,6 +99,58 @@ python examples/multi_agent_system.py
 
 ---
 
+### 5. Streaming Agent (`streaming_agent.py`)
+**Difficulty**: Intermediate  
+**Dependencies**: OpenAI API key only
+
+Real-time token streaming for better UX in chat interfaces.
+
+```bash
+python examples/streaming_agent.py
+```
+
+**What you'll learn**:
+- Streaming vs non-streaming responses
+- Real-time token delivery
+- Server-sent events (SSE) pattern
+- When to use streaming mode
+
+**Features**:
+- Side-by-side comparison of streaming vs non-streaming
+- Live token display
+- Performance metrics
+- API integration examples
+
+---
+
+### 6. Streaming Client (`streaming_client.py`)
+**Difficulty**: Beginner  
+**Dependencies**: API server running
+
+Interactive client for testing the streaming API endpoint.
+
+```bash
+# Terminal 1: Start API server
+python src/api/rest.py
+
+# Terminal 2: Run client
+python examples/streaming_client.py
+
+# Or with existing agent
+python examples/streaming_client.py --agent-id <uuid>
+
+# Demo mode
+python examples/streaming_client.py --mode demo
+```
+
+**What you'll learn**:
+- Consuming streaming APIs
+- Server-sent events (SSE) client
+- Interactive chat interfaces
+- Real-time response handling
+
+---
+
 ## Example Output
 
 Each example provides detailed output including:

@@ -6,7 +6,7 @@ adapters. Following the Dependency Inversion Principle from SOLID.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 from uuid import UUID
 
 from .models import Agent, ExecutionResult, Message, Tool
@@ -19,7 +19,6 @@ class ILLMProvider(ABC):
     This abstraction decouples the domain from specific LLM implementations,
     allowing easy swapping of providers without changing business logic.
     
-    TODO: Add streaming support for real-time responses
     TODO: Add batch processing for multiple prompts
     """
 
@@ -48,6 +47,37 @@ class ILLMProvider(ABC):
         Raises:
             LLMProviderError: If the API call fails
             RateLimitError: If rate limit is exceeded
+        """
+        pass
+
+    @abstractmethod
+    async def stream_completion(
+        self,
+        messages: List[Message],
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: int = 4000,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> AsyncIterator[str]:
+        """
+        Stream a completion from the LLM with real-time token delivery.
+        
+        Args:
+            messages: Conversation history
+            model: Model identifier
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            tools: Available tools in LLM schema format
+            
+        Yields:
+            Tokens as they arrive from the LLM
+            
+        Raises:
+            LLMProviderError: If the API call fails
+            RateLimitError: If rate limit is exceeded
+            
+        Note:
+            Tool calls are not supported in streaming mode.
         """
         pass
 

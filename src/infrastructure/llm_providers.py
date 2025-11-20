@@ -5,7 +5,7 @@ Adapter for OpenAI's API (GPT-4, GPT-3.5, embeddings).
 Implements retry logic, error handling, and rate limiting.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from tenacity import (
     retry,
@@ -25,12 +25,11 @@ from src.domain.models import Message, MessageRole
 
 class OpenAIProvider(ILLMProvider):
     """
-    OpenAI API implementation.
+    OpenAI API implementation with streaming support.
     
     RISK: OpenAI API can be unreliable during high load.
     Mitigation: Retry logic with exponential backoff.
     
-    TODO: Add response streaming support
     TODO: Add cost tracking per request
     TODO: Add request/response caching for identical prompts
     """
@@ -145,6 +144,51 @@ class OpenAIProvider(ILLMProvider):
                 raise InvalidModelError("openai", model)
             else:
                 raise LLMProviderError(f"OpenAI API error: {error_msg}") from e
+
+    async def stream_completion(
+        self,
+        messages: List[Message],
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: int = 4000,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> AsyncIterator[str]:
+        """
+        Stream completion tokens in real-time from OpenAI.
+        
+        Yields tokens as they arrive for better UX in chat interfaces.
+        Note: Tool calls are not supported in streaming mode.
+        """
+        try:
+            # Convert domain messages to OpenAI format
+            openai_messages = self._convert_messages_to_openai(messages)
+            
+            # Build request parameters (no tools in streaming mode)
+            kwargs: Dict[str, Any] = {
+                "model": model,
+                "messages": openai_messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True,
+            }
+            
+            # Stream API call
+            stream = await self.client.chat.completions.create(**kwargs)
+            
+            # Yield tokens as they arrive
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+                    
+        except Exception as e:
+            error_msg = str(e)
+            
+            if "rate_limit" in error_msg.lower():
+                raise RateLimitError("openai", retry_after=60)
+            elif "invalid" in error_msg.lower() and "model" in error_msg.lower():
+                raise InvalidModelError("openai", model)
+            else:
+                raise LLMProviderError(f"OpenAI streaming error: {error_msg}") from e
 
     async def get_embedding(self, text: str, model: str = "text-embedding-3-small") -> List[float]:
         """
