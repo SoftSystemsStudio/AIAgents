@@ -337,7 +337,7 @@ async def list_emails(query: str = "is:unread", max_results: int = 20) -> str:
     return response
 
 
-async def delete_emails_by_sender(sender: str, max_delete: int = 100) -> str:
+async def delete_emails_by_sender(sender: str, max_delete: int = 500) -> str:
     """Delete (move to trash) all emails from a specific sender."""
     client = get_gmail_client()
     query = f"from:{sender}"
@@ -353,7 +353,7 @@ async def delete_emails_by_sender(sender: str, max_delete: int = 100) -> str:
     return f"Successfully moved {result['deleted']} emails from {sender} to trash"
 
 
-async def delete_old_emails(days: int = 30, max_delete: int = 200) -> str:
+async def delete_old_emails(days: int = 30, max_delete: int = 1000) -> str:
     """Delete (move to trash) emails older than specified days."""
     client = get_gmail_client()
     query = f"older_than:{days}d"
@@ -369,7 +369,7 @@ async def delete_old_emails(days: int = 30, max_delete: int = 200) -> str:
     return f"Successfully moved {result['deleted']} emails older than {days} days to trash"
 
 
-async def archive_emails_by_sender(sender: str, max_archive: int = 100) -> str:
+async def archive_emails_by_sender(sender: str, max_archive: int = 500) -> str:
     """Archive (remove from inbox) emails from a sender."""
     client = get_gmail_client()
     query = f"from:{sender}"
@@ -385,7 +385,7 @@ async def archive_emails_by_sender(sender: str, max_archive: int = 100) -> str:
     return f"Successfully archived {count} emails from {sender}"
 
 
-async def search_and_delete(search_term: str, confirm: bool, max_delete: int = 50) -> str:
+async def search_and_delete(search_term: str, confirm: bool, max_delete: int = 500) -> str:
     """Search for emails and delete them (move to trash)."""
     if not confirm:
         return "Error: Must set confirm=True to delete emails (safety check)"
@@ -481,7 +481,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         
         return response
     
-    async def delete_emails_by_sender(sender: str, max_delete: int = 100) -> str:
+    async def delete_emails_by_sender(sender: str, max_delete: int = 500) -> str:
         """
         Delete all emails from a specific sender.
         
@@ -507,7 +507,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         
         return f"Successfully deleted {count} emails from {sender}"
     
-    async def delete_old_emails(days: int = 30, max_delete: int = 200) -> str:
+    async def delete_old_emails(days: int = 30, max_delete: int = 1000) -> str:
         """
         Delete emails older than specified days.
         
@@ -530,7 +530,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         
         return f"Successfully deleted {count} emails older than {days} days"
     
-    async def archive_emails_by_sender(sender: str, max_archive: int = 100) -> str:
+    async def archive_emails_by_sender(sender: str, max_archive: int = 500) -> str:
         """
         Archive (remove from inbox) all emails from a sender.
         
@@ -560,8 +560,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
     
     async def search_and_delete(
         search_term: str,
-        confirm: bool = True,
-        max_delete: int = 50,
+        confirm: bool,
+        max_delete: int = 500,
     ) -> str:
         """
         Search for emails and delete them.
@@ -626,7 +626,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="max_delete",
                     type="integer",
-                    description="Maximum emails to delete (safety limit, default: 100)",
+                    description="Maximum emails to delete (safety limit, default: 500)",
                     required=False,
                 ),
             ],
@@ -646,7 +646,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="max_delete",
                     type="integer",
-                    description="Maximum emails to delete (default: 200)",
+                    description="Maximum emails to delete (default: 1000)",
                     required=False,
                 ),
             ],
@@ -666,7 +666,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="max_archive",
                     type="integer",
-                    description="Maximum emails to archive (default: 100)",
+                    description="Maximum emails to archive (default: 500)",
                     required=False,
                 ),
             ],
@@ -692,7 +692,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="max_delete",
                     type="integer",
-                    description="Maximum to delete (default: 50)",
+                    description="Maximum to delete (default: 500)",
                     required=False,
                 ),
             ],
