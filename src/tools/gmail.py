@@ -174,25 +174,42 @@ class GmailClient:
         except Exception as e:
             raise Exception(f"Failed to list messages: {str(e)}")
     
-    def count_messages(self, query: str = '') -> int:
+    def count_messages(self, query: str = '', max_count: int = 10000) -> int:
         """
-        Count total messages matching query using Gmail's estimate.
-        Fast and accurate for most use cases.
+        Count total messages matching query by paginating through results.
+        More accurate than Gmail's resultSizeEstimate which can be very wrong.
         
         Args:
             query: Gmail search query
+            max_count: Maximum messages to count (default 10000 to avoid long waits)
             
         Returns:
-            Estimated count of matching messages
+            Actual count of matching messages (up to max_count)
         """
         try:
-            results = self.service.users().messages().list(
-                userId='me',
-                q=query,
-                maxResults=1,  # Just need the estimate
-            ).execute()
+            total = 0
+            page_token = None
             
-            return results.get('resultSizeEstimate', 0)
+            while total < max_count:
+                results = self.service.users().messages().list(
+                    userId='me',
+                    q=query,
+                    maxResults=500,  # Max per page
+                    pageToken=page_token,
+                ).execute()
+                
+                messages = results.get('messages', [])
+                if not messages:
+                    break
+                
+                total += len(messages)
+                
+                # Check if there are more pages
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
+            
+            return total
         except Exception as e:
             raise Exception(f"Failed to count messages: {str(e)}")
     
