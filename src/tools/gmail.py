@@ -220,7 +220,7 @@ class GmailClient:
 # Tool Handler Functions (module-level for registry)
 # ============================================================================
 
-async def list_emails(query: str = "is:unread", max_results: int = 500) -> str:
+async def list_emails(query: str = "is:unread", max_results: int = 5000) -> str:
     """List emails matching query."""
     client = get_gmail_client()
     messages = client.list_messages(query=query, max_results=max_results)
@@ -352,14 +352,14 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
     
     async def list_emails(
         query: str = "is:unread",
-        max_results: int = 500,
+        max_results: int = 5000,
     ) -> str:
         """
         List emails matching query.
         
         Args:
             query: Gmail search query (e.g., 'is:unread', 'from:notifications@', 'older_than:30d')
-            max_results: Maximum emails to return (default: 500)
+            max_results: Maximum emails to return (default: 5000)
             
         Returns:
             Summary of matching emails
@@ -531,7 +531,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="max_results",
                     type="integer",
-                    description="Maximum emails to return (default: 500)",
+                    description="Maximum emails to return (default: 5000)",
                     required=False,
                 ),
             ],
