@@ -176,39 +176,23 @@ class GmailClient:
     
     def count_messages(self, query: str = '') -> int:
         """
-        Count total messages matching query by paginating through all results.
-        More accurate than list_messages with a limit.
+        Count total messages matching query using Gmail's estimate.
+        Fast and accurate for most use cases.
         
         Args:
             query: Gmail search query
             
         Returns:
-            Total count of matching messages
+            Estimated count of matching messages
         """
         try:
-            total_count = 0
-            page_token = None
+            results = self.service.users().messages().list(
+                userId='me',
+                q=query,
+                maxResults=1,  # Just need the estimate
+            ).execute()
             
-            while True:
-                results = self.service.users().messages().list(
-                    userId='me',
-                    q=query,
-                    maxResults=500,  # Max per page
-                    pageToken=page_token,
-                ).execute()
-                
-                messages = results.get('messages', [])
-                if not messages:
-                    break
-                
-                total_count += len(messages)
-                
-                # Check if there are more pages
-                page_token = results.get('nextPageToken')
-                if not page_token:
-                    break
-            
-            return total_count
+            return results.get('resultSizeEstimate', 0)
         except Exception as e:
             raise Exception(f"Failed to count messages: {str(e)}")
     
@@ -278,11 +262,11 @@ class GmailClient:
 # Tool Handler Functions (module-level for registry)
 # ============================================================================
 
-async def list_emails(query: str = "is:unread", max_results: int = 20) -> str:
+async def list_emails(query: str = "is:unread in:inbox", max_results: int = 20) -> str:
     """List emails matching query."""
     client = get_gmail_client()
     
-    # First get accurate count
+    # Get count using Gmail's estimate (fast and accurate)
     total_count = client.count_messages(query=query)
     
     if total_count == 0:
@@ -311,7 +295,7 @@ async def list_emails(query: str = "is:unread", max_results: int = 20) -> str:
                 'error': str(e),
             })
     
-    # Format response with accurate total count
+    # Format response with total count
     response = f"Found {total_count} emails matching '{query}':\n\n"
     for idx, email in enumerate(email_summaries, 1):
         if 'error' in email:
@@ -414,20 +398,20 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
     _gmail_client = GmailClient(credentials_path)
     
     async def list_emails(
-        query: str = "is:unread",
+        query: str = "is:unread in:inbox",
         max_results: int = 20,
     ) -> str:
         """
         List emails matching query.
         
         Args:
-            query: Gmail search query (e.g., 'is:unread', 'from:notifications@', 'older_than:30d')
-            max_results: Maximum emails to show details for (default: 20, total count is always accurate)
+            query: Gmail search query (e.g., 'is:unread in:inbox', 'from:notifications@', 'older_than:30d')
+            max_results: Maximum emails to show details for (default: 20)
             
         Returns:
-            Summary of matching emails with accurate total count
+            Summary of matching emails with total count
         """
-        # Get accurate total count
+        # Get total count using Gmail's estimate
         total_count = client.count_messages(query=query)
         
         if total_count == 0:
@@ -592,13 +576,13 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
                 ToolParameter(
                     name="query",
                     type="string",
-                    description="Gmail search query (e.g., 'is:unread', 'from:notifications@', 'older_than:30d')",
+                    description="Gmail search query (default: 'is:unread in:inbox'. Examples: 'is:unread', 'from:notifications@', 'older_than:30d', 'in:sent')",
                     required=False,
                 ),
                 ToolParameter(
                     name="max_results",
                     type="integer",
-                    description="Maximum emails to show details for (default: 20, but total count is always accurate)",
+                    description="Maximum emails to show details for (default: 20)",
                     required=False,
                 ),
             ],
