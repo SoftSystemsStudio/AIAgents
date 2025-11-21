@@ -223,7 +223,7 @@ class MailboxStats:
         return cls(
             user_id=snapshot.user_id,
             timestamp=snapshot.captured_at,
-            total_messages=stats_dict["total_threads"],
+            total_messages=stats_dict["total_messages"],
             unread_messages=stats_dict["unread_threads"],
             starred_messages=0,  # Would need to track in snapshot
             primary_messages=stats_dict["categories"]["primary"],
@@ -249,15 +249,15 @@ class MailboxStats:
         
         # Penalize high unread ratio
         unread_ratio = self.unread_messages / self.total_messages
-        score -= unread_ratio * 30  # Up to -30 points
+        score -= unread_ratio * 60  # Up to -60 points for high unread
         
         # Penalize lots of old messages
         old_ratio = self.messages_older_than_90_days / self.total_messages
-        score -= old_ratio * 20  # Up to -20 points
+        score -= old_ratio * 40  # Up to -40 points for old emails
         
-        # Penalize high promotional ratio
+        # Penalize high promotional ratio  
         promo_ratio = self.promotions_messages / self.total_messages
-        score -= max(0, (promo_ratio - 0.2) * 30)  # Penalize if >20%
+        score -= max(0, (promo_ratio - 0.2) * 55)  # Penalize if >20%, up to -55 points
         
         return max(0.0, min(100.0, score))
 

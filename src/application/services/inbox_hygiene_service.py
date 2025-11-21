@@ -11,6 +11,8 @@ from datetime import datetime
 from src.domain.cleanup_policy import CleanupPolicy
 from src.domain.metrics import CleanupRun, CleanupReport
 from src.infrastructure.gmail_client import GmailClient
+from src.infrastructure.gmail_persistence import GmailCleanupRepository
+from src.infrastructure.gmail_observability import GmailCleanupObservability
 from src.application.use_cases.gmail_cleanup import (
     AnalyzeInboxUseCase,
     DryRunCleanupUseCase,
@@ -27,17 +29,28 @@ class InboxHygieneService:
     a clean interface for API/CLI/scheduler consumption.
     """
     
-    def __init__(self, gmail_client: GmailClient):
+    def __init__(
+        self,
+        gmail_client: GmailClient,
+        repository: Optional[GmailCleanupRepository] = None,
+        observability: Optional[GmailCleanupObservability] = None,
+    ):
         """
         Initialize service with Gmail client.
         
         Args:
             gmail_client: Configured GmailClient instance
+            repository: Optional persistence layer
+            observability: Optional observability layer
         """
         self.gmail = gmail_client
-        self.analyze_use_case = AnalyzeInboxUseCase(gmail_client)
-        self.dry_run_use_case = DryRunCleanupUseCase(gmail_client)
-        self.execute_use_case = ExecuteCleanupUseCase(gmail_client)
+        self.repository = repository
+        self.observability = observability
+        
+        # Initialize use cases with optional dependencies
+        self.analyze_use_case = AnalyzeInboxUseCase(gmail_client, observability)
+        self.dry_run_use_case = DryRunCleanupUseCase(gmail_client, observability)
+        self.execute_use_case = ExecuteCleanupUseCase(gmail_client, repository, observability)
         self.report_use_case = GenerateSummaryReportUseCase()
     
     def analyze_inbox(

@@ -19,6 +19,8 @@ from src.domain.metrics import (
     MailboxStats,
 )
 from src.infrastructure.gmail_client import GmailClient
+from src.infrastructure.gmail_persistence import GmailCleanupRepository
+from src.infrastructure.gmail_observability import GmailCleanupObservability
 
 
 class AnalyzeInboxUseCase:
@@ -29,8 +31,13 @@ class AnalyzeInboxUseCase:
     identify potential actions without executing them.
     """
     
-    def __init__(self, gmail_client: GmailClient):
+    def __init__(
+        self,
+        gmail_client: GmailClient,
+        observability: Optional[GmailCleanupObservability] = None,
+    ):
         self.gmail = gmail_client
+        self.observability = observability
     
     def execute(
         self,
@@ -74,6 +81,15 @@ class AnalyzeInboxUseCase:
                     for action_type, _ in msg['actions']:
                         actions_by_type[action_type] = actions_by_type.get(action_type, 0) + 1
         
+        # Log analysis completion
+        if self.observability:
+            self.observability.log_analysis_completed(
+                user_id=user_id,
+                total_threads=len(threads),
+                total_actions=total_actions,
+                health_score=stats.get_health_score(),
+            )
+        
         return {
             "user_id": user_id,
             "analyzed_at": datetime.utcnow().isoformat(),
@@ -105,8 +121,13 @@ class DryRunCleanupUseCase:
     if the cleanup were executed.
     """
     
-    def __init__(self, gmail_client: GmailClient):
+    def __init__(
+        self,
+        gmail_client: GmailClient,
+        observability: Optional[GmailCleanupObservability] = None,
+    ):
         self.gmail = gmail_client
+        self.observability = observability
     
     def execute(
         self,
@@ -165,8 +186,15 @@ class ExecuteCleanupUseCase:
     and creates audit trail.
     """
     
-    def __init__(self, gmail_client: GmailClient):
+    def __init__(
+        self,
+        gmail_client: GmailClient,
+        repository: Optional[GmailCleanupRepository] = None,
+        observability: Optional[GmailCleanupObservability] = None,
+    ):
         self.gmail = gmail_client
+        self.repository = repository
+        self.observability = observability
     
     def execute(
         self,
@@ -202,6 +230,15 @@ class ExecuteCleanupUseCase:
             started_at=datetime.utcnow(),
         )
         
+        # Log cleanup start
+        if self.observability:
+            self.observability.log_cleanup_started(
+                user_id=user_id,
+                policy_id=policy.id,
+                policy_name=policy.name,
+                dry_run=dry_run,
+            )
+        
         try:
             # Process each thread
             for thread in threads:
@@ -224,9 +261,26 @@ class ExecuteCleanupUseCase:
                                 self._execute_action(message.id, action_type, params)
                                 action_record.status = ActionStatus.SUCCESS
                                 action_record.executed_at = datetime.utcnow()
+                                
+                                # Log action
+                                if self.observability:
+                                    self.observability.log_action_executed(
+                                        user_id=user_id,
+                                        action_type=action_type.value,
+                                        success=True,
+                                    )
                             except Exception as e:
                                 action_record.status = ActionStatus.FAILED
                                 action_record.error_message = str(e)
+                                
+                                # Log action failure
+                                if self.observability:
+                                    self.observability.log_action_executed(
+                                        user_id=user_id,
+                                        action_type=action_type.value,
+                                        success=False,
+                                        error=str(e),
+                                    )
                         else:
                             action_record.status = ActionStatus.SKIPPED
                         
@@ -242,8 +296,26 @@ class ExecuteCleanupUseCase:
         except Exception as e:
             run.status = CleanupStatus.FAILED
             run.error_message = str(e)
+            
+            # Log failure
+            if self.observability:
+                duration = (datetime.utcnow() - run.started_at).total_seconds()
+                self.observability.log_cleanup_failed(
+                    user_id=user_id,
+                    policy_id=policy.id,
+                    error=str(e),
+                    duration_seconds=duration,
+                )
         finally:
             run.completed_at = datetime.utcnow()
+            
+            # Log completion
+            if self.observability:
+                self.observability.log_cleanup_completed(run)
+            
+            # Save to repository
+            if self.repository:
+                await self.repository.save_run(run)
         
         return run
     

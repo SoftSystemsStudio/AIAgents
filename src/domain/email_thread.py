@@ -93,9 +93,15 @@ class EmailMessage:
     
     def matches_sender(self, domain_or_email: str) -> bool:
         """Check if sender matches domain or exact email."""
-        if '@' in domain_or_email:
+        if domain_or_email.startswith('@'):
+            # @domain.com format
+            return self.from_address.domain.lower() == domain_or_email[1:].lower()
+        elif '@' in domain_or_email:
+            # Full email address
             return self.from_address.address.lower() == domain_or_email.lower()
-        return self.from_address.domain.lower() == domain_or_email.lower()
+        else:
+            # domain.com format
+            return self.from_address.domain.lower() == domain_or_email.lower()
 
 
 @dataclass
@@ -132,9 +138,9 @@ class EmailThread:
     
     @property
     def age_days(self) -> int:
-        """Age of thread based on latest message."""
-        latest = self.latest_message
-        return latest.age_days if latest else 0
+        """Age of thread based on oldest message."""
+        oldest = self.oldest_message
+        return oldest.age_days if oldest else 0
     
     @property
     def total_size_bytes(self) -> int:
@@ -182,6 +188,16 @@ class MailboxSnapshot:
     total_size_bytes: int = 0
     metadata: Dict[str, Any] = field(default_factory=dict)
     
+    @property
+    def thread_count(self) -> int:
+        """Total number of threads."""
+        return self.total_threads
+    
+    @property
+    def message_count(self) -> int:
+        """Total number of messages."""
+        return self.total_messages
+    
     @classmethod
     def from_threads(cls, user_id: str, threads: List[EmailThread]) -> 'MailboxSnapshot':
         """Create snapshot from list of threads."""
@@ -209,7 +225,7 @@ class MailboxSnapshot:
         """Get all threads from a specific sender."""
         return [
             thread for thread in self.threads
-            if thread.messages and thread.messages[0].matches_sender(domain_or_email)
+            if any(msg.matches_sender(domain_or_email) for msg in thread.messages)
         ]
     
     def get_old_threads(self, days: int) -> List[EmailThread]:
@@ -240,4 +256,14 @@ class MailboxSnapshot:
             "archived_count": self.archived_count,
             "trash_count": self.trash_count,
             "size_mb": round(self.size_mb, 2),
+            "unread_threads": sum(1 for t in self.threads if any(m.is_unread for m in t.messages)),
+            "threads_with_attachments": sum(1 for t in self.threads if t.has_attachments),
+            "average_messages_per_thread": self.total_messages / self.total_threads if self.total_threads > 0 else 0,
+            "categories": {
+                "primary": sum(1 for t in self.threads for m in t.messages if m.category == EmailCategory.PRIMARY),
+                "social": sum(1 for t in self.threads for m in t.messages if m.category == EmailCategory.SOCIAL),
+                "promotions": sum(1 for t in self.threads for m in t.messages if m.category == EmailCategory.PROMOTIONS),
+                "updates": sum(1 for t in self.threads for m in t.messages if m.category == EmailCategory.UPDATES),
+                "forums": sum(1 for t in self.threads for m in t.messages if m.category == EmailCategory.FORUMS),
+            },
         }
