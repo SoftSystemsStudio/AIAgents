@@ -487,3 +487,94 @@ class GmailClient:
     def unstar_message(self, message_id: str) -> None:
         """Unstar message."""
         self.modify_labels(message_id, remove_labels=['STARRED'])
+    
+    def batch_modify_messages(
+        self,
+        message_ids: List[str],
+        add_labels: Optional[List[str]] = None,
+        remove_labels: Optional[List[str]] = None,
+    ) -> Dict[str, int]:
+        """
+        Batch modify multiple messages.
+        
+        Uses Gmail API batch request for efficiency.
+        
+        Args:
+            message_ids: List of message IDs
+            add_labels: Labels to add
+            remove_labels: Labels to remove
+            
+        Returns:
+            Dict with 'success' and 'failed' counts
+        """
+        results = {'success': 0, 'failed': 0}
+        
+        # Gmail API supports batch requests via batchModify
+        try:
+            self.service.users().messages().batchModify(
+                userId='me',
+                body={
+                    'ids': message_ids,
+                    'addLabelIds': add_labels or [],
+                    'removeLabelIds': remove_labels or [],
+                },
+            ).execute()
+            results['success'] = len(message_ids)
+        except Exception as e:
+            # Fall back to individual modifications if batch fails
+            for msg_id in message_ids:
+                try:
+                    self.modify_labels(msg_id, add_labels, remove_labels)
+                    results['success'] += 1
+                except Exception:
+                    results['failed'] += 1
+        
+        return results
+    
+    def batch_archive_messages(self, message_ids: List[str]) -> Dict[str, int]:
+        """
+        Archive multiple messages in batch.
+        
+        Args:
+            message_ids: List of message IDs
+            
+        Returns:
+            Dict with 'success' and 'failed' counts
+        """
+        return self.batch_modify_messages(message_ids, remove_labels=['INBOX'])
+    
+    def batch_trash_messages(self, message_ids: List[str]) -> Dict[str, int]:
+        """
+        Trash multiple messages in batch.
+        
+        Note: Gmail API doesn't have batch trash, so this falls back
+        to individual trash operations with progress tracking.
+        
+        Args:
+            message_ids: List of message IDs
+            
+        Returns:
+            Dict with 'success' and 'failed' counts
+        """
+        results = {'success': 0, 'failed': 0}
+        
+        for msg_id in message_ids:
+            try:
+                self.trash_message(msg_id)
+                results['success'] += 1
+            except Exception:
+                results['failed'] += 1
+        
+        return results
+    
+    def batch_mark_read(self, message_ids: List[str]) -> Dict[str, int]:
+        """
+        Mark multiple messages as read in batch.
+        
+        Args:
+            message_ids: List of message IDs
+            
+        Returns:
+            Dict with 'success' and 'failed' counts
+        """
+        return self.batch_modify_messages(message_ids, remove_labels=['UNREAD'])

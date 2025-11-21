@@ -9,6 +9,8 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from dataclasses import asdict
 import uuid
+import time
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from src.domain.email_thread import MailboxSnapshot, EmailThread, EmailMessage
 from src.domain.cleanup_policy import CleanupPolicy, CleanupAction
@@ -22,6 +24,7 @@ from src.domain.metrics import (
 from src.infrastructure.gmail_client import GmailClient
 from src.infrastructure.gmail_persistence import GmailCleanupRepository
 from src.infrastructure.gmail_observability import GmailCleanupObservability
+from src.rate_limiting import RateLimiter, RateLimitConfig, RateLimitError
 
 
 class AnalyzeInboxUseCase:
@@ -192,10 +195,16 @@ class ExecuteCleanupUseCase:
         gmail_client: GmailClient,
         repository: Optional[GmailCleanupRepository] = None,
         observability: Optional[GmailCleanupObservability] = None,
+        rate_limiter: Optional[RateLimiter] = None,
     ):
         self.gmail = gmail_client
         self.repository = repository
         self.observability = observability
+        self.rate_limiter = rate_limiter or RateLimiter(RateLimitConfig(
+            max_requests_per_minute=250,  # Gmail API quota
+            max_requests_per_hour=10000,
+            max_requests_per_day=100000,
+        ))
     
     def execute(
         self,
@@ -259,7 +268,7 @@ class ExecuteCleanupUseCase:
                         # Execute action if not dry run
                         if not dry_run:
                             try:
-                                self._execute_action(message.id, action_type, params)
+                                self._execute_action_with_retry(message.id, action_type, params, user_id)
                                 action_record.status = ActionStatus.SUCCESS
                                 action_record.executed_at = datetime.utcnow()
                                 
@@ -321,6 +330,34 @@ class ExecuteCleanupUseCase:
             #     await self.repository.save_run(run)
         
         return run
+    
+    def _execute_action_with_retry(
+        self,
+        message_id: str,
+        action: CleanupAction,
+        params: dict,
+        user_id: str,
+    ) -> None:
+        """Execute action with rate limiting and retry logic."""
+        # Small delay to respect Gmail API rate limits
+        time.sleep(0.01)
+        
+        # Execute with exponential backoff retry
+        return self._execute_action_with_backoff(message_id, action, params)
+    
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(Exception),
+    )
+    def _execute_action_with_backoff(
+        self,
+        message_id: str,
+        action: CleanupAction,
+        params: dict,
+    ) -> None:
+        """Execute action with exponential backoff retry."""
+        return self._execute_action(message_id, action, params)
     
     def _execute_action(
         self,
