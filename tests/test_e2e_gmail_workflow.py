@@ -23,7 +23,7 @@ from src.domain.cleanup_rule_builder import (
     delete_very_old,
 )
 from src.domain.email_thread import EmailCategory
-from src.application.use_cases.gmail_cleanup import (
+from src.application.gmail_cleanup_use_cases import (
     ExecuteCleanupUseCase,
     AnalyzeInboxUseCase,
 )

@@ -2,7 +2,7 @@
 Gmail Client Infrastructure - Gmail API adapter.
 
 Provides clean interface to Gmail API, returning domain entities
-instead of raw API responses.
+instead of raw API responses. Implements IGmailClient interface.
 """
 
 from typing import List, Dict, Any, Optional
@@ -28,6 +28,7 @@ from src.domain.email_thread import (
     EmailCategory,
     EmailImportance,
 )
+from src.domain.gmail_interfaces import IGmailClient
 
 
 # Gmail API scopes - modify allows read/write but not permanent delete
@@ -37,7 +38,7 @@ SCOPES = [
 ]
 
 
-class GmailClient:
+class GmailClient(IGmailClient):
     """
     Gmail API client that returns domain entities.
     

@@ -100,7 +100,7 @@ async def test_analyze_inbox_with_observability(
     observability: GmailCleanupObservability,
 ):
     """Test inbox analysis with observability."""
-    from src.application.use_cases.gmail_cleanup import AnalyzeInboxUseCase
+    from src.application.gmail_cleanup_use_cases import AnalyzeInboxUseCase
     
     use_case = AnalyzeInboxUseCase(
         gmail_client=mock_gmail_client,
@@ -123,7 +123,7 @@ async def test_execute_cleanup_with_persistence(
     observability: GmailCleanupObservability,
 ):
     """Test cleanup execution with persistence."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     # Create test policy
     policy = CleanupPolicy(
@@ -192,7 +192,7 @@ async def test_full_cleanup_workflow(
     )
     
     # Step 1: Analyze inbox
-    from src.application.use_cases.gmail_cleanup import AnalyzeInboxUseCase
+    from src.application.gmail_cleanup_use_cases import AnalyzeInboxUseCase
     analyze_use_case = AnalyzeInboxUseCase(mock_gmail_client, observability)
     snapshot = await analyze_use_case.execute("user123")
     
@@ -216,7 +216,7 @@ async def test_full_cleanup_workflow(
     await repository.save_policy(policy)
     
     # Step 3: Execute cleanup
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     execute_use_case = ExecuteCleanupUseCase(
         mock_gmail_client,
         repository,
@@ -348,7 +348,7 @@ async def test_dry_run_mode(
     repository: InMemoryGmailCleanupRepository,
 ):
     """Test dry run mode doesn't execute actions."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     policy = CleanupPolicy(
         id="policy1",
@@ -373,7 +373,7 @@ async def test_observability_metrics_recorded(
     observability: GmailCleanupObservability,
 ):
     """Test that observability metrics are recorded."""
-    from src.application.use_cases.gmail_cleanup import AnalyzeInboxUseCase
+    from src.application.gmail_cleanup_use_cases import AnalyzeInboxUseCase
     
     use_case = AnalyzeInboxUseCase(mock_gmail_client, observability)
     
@@ -393,7 +393,7 @@ async def test_concurrent_cleanup_runs(
 ):
     """Test multiple concurrent cleanup runs."""
     import asyncio
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     # Create multiple policies
     policies = [

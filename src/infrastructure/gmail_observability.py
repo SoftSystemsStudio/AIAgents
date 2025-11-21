@@ -2,7 +2,7 @@
 Gmail Cleanup Observability - Metrics and logging integration.
 
 Integrates with existing observability infrastructure to track
-cleanup operations, performance, and outcomes.
+cleanup operations, performance, and outcomes. Implements IGmailObservability interface.
 """
 
 from typing import Dict, Any, Optional
@@ -10,9 +10,10 @@ from datetime import datetime
 
 from src.infrastructure.observability import ObservabilityProvider
 from src.domain.metrics import CleanupRun, CleanupStatus
+from src.domain.gmail_interfaces import IGmailObservability
 
 
-class GmailCleanupObservability:
+class GmailCleanupObservability(IGmailObservability):
     """
     Observability wrapper for Gmail cleanup operations.
     
@@ -31,16 +32,18 @@ class GmailCleanupObservability:
     
     def log_cleanup_started(
         self,
+        run_id: str,
         user_id: str,
         policy_id: str,
-        policy_name: str,
         dry_run: bool = False,
+        policy_name: str = "",
     ) -> None:
         """Log cleanup operation start."""
         self.observability.log(
             "info",
             "gmail_cleanup_started",
             {
+                "run_id": run_id,
                 "user_id": user_id,
                 "policy_id": policy_id,
                 "policy_name": policy_name,
@@ -58,84 +61,181 @@ class GmailCleanupObservability:
             }
         )
     
-    def log_cleanup_completed(self, run: CleanupRun) -> None:
+    def log_cleanup_completed(
+        self,
+        run_id: str,
+        duration_seconds: float,
+        actions_performed: int,
+        errors: int = 0,
+        run: Optional[CleanupRun] = None,
+    ) -> None:
         """Log cleanup operation completion."""
-        summary = run.get_summary()
-        
-        self.observability.log(
-            "info",
-            "gmail_cleanup_completed",
-            {
-                "run_id": run.id,
-                "user_id": run.user_id,
-                "policy_id": run.policy_id,
-                "status": run.status.value,
-                "duration_seconds": run.duration_seconds,
-                "actions_total": len(run.actions),
-                "actions_successful": run.actions_successful,
-                "actions_failed": run.actions_failed,
-                "emails_deleted": run.emails_deleted,
-                "emails_archived": run.emails_archived,
-            }
-        )
-        
-        # Record metrics
-        self.observability.record_metric(
-            "gmail_cleanup_runs_total",
-            1.0,
-            {
-                "user_id": run.user_id,
-                "policy_id": run.policy_id,
-                "status": run.status.value,
-            }
-        )
-        
-        if run.duration_seconds:
+        if run:
+            # Full detailed logging with CleanupRun
+            summary = run.get_summary()
+            
+            self.observability.log(
+                "info",
+                "gmail_cleanup_completed",
+                {
+                    "run_id": run.id,
+                    "user_id": run.user_id,
+                    "policy_id": run.policy_id,
+                    "status": run.status.value,
+                    "duration_seconds": run.duration_seconds,
+                    "actions_total": len(run.actions),
+                    "actions_successful": run.actions_successful,
+                    "actions_failed": run.actions_failed,
+                    "emails_deleted": run.emails_deleted,
+                    "emails_archived": run.emails_archived,
+                }
+            )
+            
+            # Record metrics
             self.observability.record_metric(
-                "gmail_cleanup_duration_seconds",
-                run.duration_seconds,
+                "gmail_cleanup_runs_total",
+                1.0,
+                {
+                    "user_id": run.user_id,
+                    "policy_id": run.policy_id,
+                    "status": run.status.value,
+                }
+            )
+            
+            if run.duration_seconds:
+                self.observability.record_metric(
+                    "gmail_cleanup_duration_seconds",
+                    run.duration_seconds,
+                    {
+                        "user_id": run.user_id,
+                        "policy_id": run.policy_id,
+                    }
+                )
+            
+            self.observability.record_metric(
+                "gmail_emails_processed_total",
+                float(len(run.actions)),
                 {
                     "user_id": run.user_id,
                     "policy_id": run.policy_id,
                 }
             )
+            
+            self.observability.record_metric(
+                "gmail_emails_deleted_total",
+                float(run.emails_deleted),
+                {
+                    "user_id": run.user_id,
+                    "policy_id": run.policy_id,
+                }
+            )
+            
+            self.observability.record_metric(
+                "gmail_emails_archived_total",
+                float(run.emails_archived),
+                {
+                    "user_id": run.user_id,
+                    "policy_id": run.policy_id,
+                }
+            )
+            
+            if run.storage_freed_mb:
+                self.observability.record_metric(
+                    "gmail_storage_freed_bytes",
+                    run.storage_freed_mb * 1024 * 1024,
+                    {
+                        "user_id": run.user_id,
+                        "policy_id": run.policy_id,
+                    }
+                )
+        else:
+            # Simple interface implementation
+            self.observability.log(
+                "info",
+                "gmail_cleanup_completed",
+                {
+                    "run_id": run_id,
+                    "duration_seconds": duration_seconds,
+                    "actions_performed": actions_performed,
+                    "errors": errors,
+                }
+            )
+            
+            self.observability.record_metric(
+                "gmail_cleanup_runs_total",
+                1.0,
+                {"run_id": run_id}
+            )
+    
+    def log_cleanup_error(
+        self,
+        run_id: str,
+        error_type: str,
+        error_message: str,
+    ) -> None:
+        """Log cleanup operation error."""
+        self.observability.log(
+            "error",
+            "gmail_cleanup_error",
+            {
+                "run_id": run_id,
+                "error_type": error_type,
+                "error_message": error_message,
+            }
+        )
         
+        self.observability.record_metric(
+            "gmail_cleanup_errors_total",
+            1.0,
+            {"error_type": error_type}
+        )
+    
+    def record_emails_processed(
+        self,
+        count: int,
+        user_id: str,
+        action_type: str,
+    ) -> None:
+        """Record number of emails processed."""
         self.observability.record_metric(
             "gmail_emails_processed_total",
-            float(len(run.actions)),
+            float(count),
             {
-                "user_id": run.user_id,
-                "policy_id": run.policy_id,
+                "user_id": user_id,
+                "action_type": action_type,
             }
         )
-        
+    
+    def record_cleanup_duration(
+        self,
+        duration_seconds: float,
+        user_id: str,
+        status: str,
+    ) -> None:
+        """Record cleanup operation duration."""
         self.observability.record_metric(
-            "gmail_emails_deleted_total",
-            float(run.emails_deleted),
+            "gmail_cleanup_duration_seconds",
+            duration_seconds,
             {
-                "user_id": run.user_id,
-                "policy_id": run.policy_id,
+                "user_id": user_id,
+                "status": status,
             }
         )
-        
+    
+    def increment_error_count(
+        self,
+        error_type: str,
+        user_id: str,
+    ) -> None:
+        """Increment error counter."""
         self.observability.record_metric(
-            "gmail_emails_archived_total",
-            float(run.emails_archived),
+            "gmail_cleanup_errors_total",
+            1.0,
             {
-                "user_id": run.user_id,
-                "policy_id": run.policy_id,
+                "error_type": error_type,
+                "user_id": user_id,
             }
         )
-        
-        if run.storage_freed_mb:
-            self.observability.record_metric(
-                "gmail_storage_freed_bytes",
-                run.storage_freed_mb * 1024 * 1024,
-                {
-                    "user_id": run.user_id,
-                    "policy_id": run.policy_id,
-                }
-            )
     
     def log_cleanup_failed(
         self,

@@ -22,7 +22,7 @@ from src.domain.cleanup_rule_builder import (
     archive_old_promotions,
 )
 from src.domain.email_thread import EmailCategory, EmailMessage
-from src.application.use_cases.gmail_cleanup import (
+from src.application.gmail_cleanup_use_cases import (
     ExecuteCleanupUseCase,
     AnalyzeInboxUseCase,
 )

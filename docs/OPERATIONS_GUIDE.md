@@ -8,6 +8,21 @@
 
 This guide provides complete instructions for deploying, configuring, and operating the Gmail Cleanup Agent in production environments.
 
+The Gmail Cleanup solution is built on a layered architecture following Domain-Driven Design principles. For detailed architecture documentation, see [SOLUTIONS_ARCHITECTURE.md](./SOLUTIONS_ARCHITECTURE.md).
+
+### Architecture Quick Reference
+
+```
+Presentation → Application → Domain → Infrastructure → External Services
+(CLI/API)      (Use Cases)   (Logic)  (Adapters)       (Gmail API)
+```
+
+**Key Modules**:
+- `src/domain/gmail_interfaces.py` - Domain contracts
+- `src/application/gmail_cleanup_use_cases.py` - Business workflows  
+- `src/infrastructure/gmail_client.py` - Gmail API adapter
+- `examples/gmail_cleanup_agent.py` - Reference implementation
+
 ---
 
 ## Table of Contents

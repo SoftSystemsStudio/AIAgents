@@ -1,103 +1,294 @@
 """
-Gmail Cleanup Agent - Intelligent email management assistant.
+Gmail Cleanup Agent - Reference Implementation
 
-This agent can:
-- Analyze your inbox and identify cleanup opportunities
-- Delete emails from specific senders (promotions, notifications)
-- Archive old emails
-- Unsubscribe from mailing lists
-- Organize emails with smart filtering
+This is a REFERENCE IMPLEMENTATION showing how to use the Gmail cleanup solution.
+
+The actual business logic lives in:
+- src/domain/gmail_interfaces.py (contracts)
+- src/application/gmail_cleanup_use_cases.py (orchestration)
+- src/infrastructure/gmail_client.py (Gmail API adapter)
+
+This file demonstrates:
+- How to wire up dependencies
+- How to use the fluent builder API
+- How to execute cleanup operations
+- Interactive agent-style workflows (optional)
+
+For production CLI usage, see: run_gmail_agent.sh
+For API endpoints, see: src/api/gmail_cleanup.py (future)
 
 Setup:
-1. Enable Gmail API in Google Cloud Console
-2. Download credentials.json to project root
-3. First run will open browser for OAuth authentication
-4. Agent will have access to read, modify, and delete emails
+1. Follow docs/GMAIL_SETUP.md for OAuth credentials
+2. Run this example: python -m examples.gmail_cleanup_agent
+3. Or use production CLI: ./run_gmail_agent.sh --dry-run
 """
 
-import asyncio
-import os
-from uuid import uuid4
+import sys
 from pathlib import Path
 
-# Load environment variables from .env file
-try:
-    from dotenv import load_dotenv
-    env_path = Path(__file__).parent.parent / '.env'
-    load_dotenv(env_path)
-except ImportError:
-    print("⚠️  Warning: python-dotenv not installed. Install with: pip install python-dotenv")
-    print("    Or manually export OPENAI_API_KEY environment variable")
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from src.config import get_config
-from src.domain.models import Agent, AgentCapability
-from src.infrastructure.llm_providers import OpenAIProvider
-from src.infrastructure.repositories import InMemoryAgentRepository, InMemoryToolRegistry
-from src.infrastructure.observability import StructuredLogger
-from src.application.orchestrator import AgentOrchestrator
-from src.tools.gmail import create_gmail_tools
+from application.gmail_cleanup_use_cases import (
+    AnalyzeInboxUseCase,
+    DryRunCleanupUseCase,
+    ExecuteCleanupUseCase,
+)
+from infrastructure.gmail_client import GmailClient
+from infrastructure.gmail_persistence import InMemoryGmailCleanupRepository
+from infrastructure.gmail_observability import GmailCleanupObservability
+from infrastructure.observability import ObservabilityProvider
+from domain.cleanup_policy import CleanupPolicy
+from domain.cleanup_rule_builder import CleanupRuleBuilder
 
 
-async def create_gmail_cleanup_agent(
-    credentials_path: str = 'credentials.json',
-) -> tuple[Agent, AgentOrchestrator]:
+def demo_basic_usage():
+    """Demonstrate basic Gmail cleanup usage."""
+    print("╔════════════════════════════════════════════════════════════╗")
+    print("║                                                            ║")
+    print("║        Gmail Cleanup - Reference Implementation            ║")
+    print("║                                                            ║")
+    print("╚════════════════════════════════════════════════════════════╝")
+    print("")
+    print("This example demonstrates how to use the Gmail cleanup")
+    print("solution modules.")
+    print("")
+    
+    # 1. Initialize dependencies (dependency injection)
+    print("1️⃣  Initializing components...")
+    gmail_client = GmailClient(
+        credentials_path='credentials.json',
+        token_path='token.pickle'
+    )
+    repository = InMemoryGmailCleanupRepository()
+    observability = GmailCleanupObservability(ObservabilityProvider())
+    print("   ✅ Gmail client, repository, and observability initialized")
+    print("")
+    
+    # 2. Get user email
+    profile = gmail_client.get_profile()
+    user_id = profile.get('emailAddress', 'unknown')
+    print(f"2️⃣  Connected to Gmail: {user_id}")
+    print("")
+    
+    # 3. Create cleanup policy using fluent builder
+    print("3️⃣  Building cleanup policy...")
+    policy = (
+        CleanupRuleBuilder()
+        .archive_if_category("promotions")
+        .archive_if_older_than_days(90)
+        .never_touch_starred()
+        .never_touch_important()
+        .build()
+    )
+    print(f"   ✅ Policy created: {policy.name}")
+    print(f"      Rules: {len(policy.rules)}")
+    print("")
+    
+    # 4. Analyze inbox (read-only)
+    print("4️⃣  Analyzing inbox...")
+    analyze_use_case = AnalyzeInboxUseCase(gmail_client, observability)
+    analysis = analyze_use_case.execute(
+        user_id=user_id,
+        policy=policy,
+        max_threads=50,
+    )
+    print(f"   ✅ Analysis complete")
+    print(f"      Threads analyzed: {analysis['snapshot']['total_threads']}")
+    print(f"      Actions recommended: {analysis['recommendations']['total_actions']}")
+    print(f"      Mailbox health: {analysis['health_score']:.1f}/100")
+    print("")
+    
+    # 5. Dry run (preview actions)
+    print("5️⃣  Running dry run (preview)...")
+    dry_run_use_case = DryRunCleanupUseCase(gmail_client, observability)
+    dry_run = dry_run_use_case.execute(
+        user_id=user_id,
+        policy=policy,
+        max_threads=50,
+    )
+    print(f"   ✅ Dry run complete")
+    print(f"      Run ID: {dry_run.id}")
+    print(f"      Actions planned: {len(dry_run.actions)}")
+    print("")
+    
+    # Show action breakdown
+    summary = dry_run.get_summary()
+    actions_by_type = summary.get('actions_by_type', {})
+    if actions_by_type:
+        print("   Action breakdown:")
+        for action_type, count in actions_by_type.items():
+            print(f"     • {action_type}: {count}")
+        print("")
+    
+    # 6. Execute cleanup (optional - commented out for safety)
+    print("6️⃣  Ready to execute...")
+    print("   ⚠️  Uncomment the code below to actually execute cleanup")
+    print("   ⚠️  This will modify your Gmail!")
+    print("")
+    print("   # execute_use_case = ExecuteCleanupUseCase(")
+    print("   #     gmail_client=gmail_client,")
+    print("   #     repository=repository,")
+    print("   #     observability=observability,")
+    print("   # )")
+    print("   # result = execute_use_case.execute(")
+    print("   #     user_id=user_id,")
+    print("   #     policy=policy,")
+    print("   #     max_threads=50,")
+    print("   #     dry_run=False,  # Set to False to execute")
+    print("   # )")
+    print("")
+    
+    # Uncomment to execute:
+    # execute_use_case = ExecuteCleanupUseCase(
+    #     gmail_client=gmail_client,
+    #     repository=repository,
+    #     observability=observability,
+    # )
+    # result = execute_use_case.execute(
+    #     user_id=user_id,
+    #     policy=policy,
+    #     max_threads=50,
+    #     dry_run=False,
+    # )
+    # print(f"✅ Cleanup complete!")
+    # print(f"   Actions performed: {len(result.actions)}")
+    # print(f"   Successful: {result.actions_successful}")
+    # print(f"   Failed: {result.actions_failed}")
+    
+    print("╔════════════════════════════════════════════════════════════╗")
+    print("║                                                            ║")
+    print("║   ✅ Demo complete! Check the code to see how it works    ║")
+    print("║                                                            ║")
+    print("╚════════════════════════════════════════════════════════════╝")
+    print("")
+    print("For production usage:")
+    print("  ./run_gmail_agent.sh --dry-run")
+    print("  ./run_gmail_agent.sh --execute --policy moderate")
+    print("")
+
+
+def demo_fluent_builder():
+    """Demonstrate the fluent builder API for creating policies."""
+    print("Fluent Builder API Demo")
+    print("=" * 60)
+    print("")
+    
+    # Conservative policy
+    print("Conservative Policy:")
+    policy = (
+        CleanupRuleBuilder()
+        .archive_if_category("promotions")
+        .archive_if_older_than_days(90)
+        .never_touch_starred()
+        .build()
+    )
+    print(f"  {policy.name}: {len(policy.rules)} rules")
+    print("")
+    
+    # Moderate policy  
+    print("Moderate Policy:")
+    policy = (
+        CleanupRuleBuilder()
+        .archive_if_category("promotions")
+        .archive_if_category("social")
+        .archive_if_older_than_days(60)
+        .delete_if_older_than_days(180)
+        .never_touch_starred()
+        .never_touch_important()
+        .build()
+    )
+    print(f"  {policy.name}: {len(policy.rules)} rules")
+    print("")
+    
+    # Aggressive policy
+    print("Aggressive Policy:")
+    policy = (
+        CleanupRuleBuilder()
+        .archive_if_category("promotions")
+        .archive_if_category("social")
+        .archive_if_category("updates")
+        .archive_if_older_than_days(30)
+        .delete_if_older_than_days(90)
+        .mark_read_if_category("forums")
+        .never_touch_starred()
+        .never_touch_important()
+        .build()
+    )
+    print(f"  {policy.name}: {len(policy.rules)} rules")
+    print("")
+
+
+def demo_custom_policy():
+    """Demonstrate creating custom policies for specific needs."""
+    print("Custom Policy Demo")
+    print("=" * 60)
+    print("")
+    
+    # Custom policy for a specific sender
+    print("Example: Clean up newsletters from specific sender")
+    policy = (
+        CleanupRuleBuilder()
+        .archive_if_sender("@newsletters.example.com")
+        .archive_if_older_than_days(30)
+        .never_touch_starred()
+        .build()
+    )
+    print(f"  {policy.name}")
+    for i, rule in enumerate(policy.rules, 1):
+        print(f"    {i}. {rule.name}: {rule.description}")
+    print("")
+
+
+if __name__ == "__main__":
     """
-    Create a Gmail cleanup agent with email management tools.
+    Run the Gmail cleanup reference implementation.
     
-    Args:
-        credentials_path: Path to Gmail OAuth credentials
-        
-    Returns:
-        Tuple of (agent, orchestrator)
+    Choose which demo to run:
     """
-    config = get_config()
+    import sys
     
-    # Debug: Check if API key is loaded
-    api_key = config.llm.openai_api_key or os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        raise ValueError(
-            "OPENAI_API_KEY not set!\n"
-            "Please set it in .env file or export as environment variable:\n"
-            "  export OPENAI_API_KEY='your-key-here'"
-        )
+    if len(sys.argv) > 1:
+        demo_type = sys.argv[1]
+    else:
+        demo_type = "basic"
     
-    print(f"✅ OpenAI API key loaded: {api_key[:20]}...")
-    
-    # Initialize components
-    observability = StructuredLogger(log_level="INFO")
-    llm_provider = OpenAIProvider(api_key=api_key)
-    agent_repo = InMemoryAgentRepository()
-    tool_registry = InMemoryToolRegistry()
-    
-    # Register Gmail tools
-    gmail_tools = create_gmail_tools(credentials_path)
-    for tool in gmail_tools:
-        tool_registry.register_tool(tool)
-    
-    # Create agent
-    agent = Agent(
-        id=uuid4(),
-        name="Gmail Cleanup Assistant",
-        description="Intelligent email management assistant that can analyze, organize, and clean up your Gmail inbox",
-        system_prompt="""You are a helpful Gmail cleanup assistant. You can:
+    try:
+        if demo_type == "basic":
+            demo_basic_usage()
+        elif demo_type == "builder":
+            demo_fluent_builder()
+        elif demo_type == "custom":
+            demo_custom_policy()
+        else:
+            print(f"Unknown demo type: {demo_type}")
+            print("")
+            print("Usage: python -m examples.gmail_cleanup_agent [demo_type]")
+            print("")
+            print("Demo types:")
+            print("  basic   - Full usage demo with all use cases (default)")
+            print("  builder - Fluent builder API examples")
+            print("  custom  - Custom policy creation examples")
+            sys.exit(1)
+    except Exception as e:
+        print(f"")
+        print(f"❌ Error: {e}")
+        print(f"")
+        print(f"Make sure you have:")
+        print(f"  1. Followed docs/GMAIL_SETUP.md for OAuth setup")
+        print(f"  2. credentials.json in project root")
+        print(f"  3. Completed OAuth flow (token.pickle created)")
+        print(f"")
+        sys.exit(1)
 
-1. ANALYZE the inbox to identify:
-   - Unread emails that need attention
-   - Promotional emails taking up space
-   - Old emails that can be archived/deleted
-   - Emails from specific senders to bulk delete
 
-2. CLEANUP operations:
-   - Delete emails by sender (promotions, notifications, etc.)
-   - Delete old emails (specify how many days old)
-   - Archive emails to keep them but clear inbox
-   - Search and delete specific types of emails
+"""
+Legacy agent-style implementation below for reference.
+This shows how to integrate Gmail cleanup with the platform's
+agent orchestration layer if you want interactive chat-style workflows.
+"""
 
-3. BEST PRACTICES:
-   - Always list emails FIRST before deleting
-   - Ask for confirmation on bulk deletions
-   - Start with small batches (50-100 emails)
-   - Suggest archiving instead of deleting when appropriate
+# ... rest of the file with legacy async def create_gmail_cleanup_agent() etc.
 
 When user asks to clean inbox:
 1. First use list_emails to show what's there

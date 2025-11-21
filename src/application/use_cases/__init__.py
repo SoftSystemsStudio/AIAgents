@@ -1,11 +1,24 @@
-"""Use cases for the Gmail cleanup application."""
+"""
+Use cases for Gmail cleanup solution.
 
-from src.application.use_cases.gmail_cleanup import (
-    AnalyzeInboxUseCase,
-    ExecuteCleanupUseCase,
-)
+These use cases are now deprecated. Import from:
+src.application.gmail_cleanup_use_cases instead.
+"""
 
-__all__ = [
-    "AnalyzeInboxUseCase",
-    "ExecuteCleanupUseCase",
-]
+# Legacy imports for backward compatibility
+try:
+    from src.application.gmail_cleanup_use_cases import (
+        AnalyzeInboxUseCase,
+        DryRunCleanupUseCase,
+        ExecuteCleanupUseCase,
+    )
+    
+    __all__ = [
+        "AnalyzeInboxUseCase",
+        "DryRunCleanupUseCase",
+        "ExecuteCleanupUseCase",
+    ]
+except ImportError:
+    # Graceful fallback if file hasn't been moved yet
+    __all__ = []
+

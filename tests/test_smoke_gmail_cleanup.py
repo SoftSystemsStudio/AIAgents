@@ -139,7 +139,7 @@ def repository():
 @pytest.mark.smoke
 def test_dry_run_prevents_execution(mock_gmail, repository):
     """Verify dry-run identifies actions but doesn't execute them."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     policy = CleanupPolicy(
         id="dry-test",
@@ -173,7 +173,7 @@ def test_dry_run_prevents_execution(mock_gmail, repository):
 @pytest.mark.smoke
 def test_execute_mode_applies_actions(mock_gmail, repository):
     """Verify execute mode actually applies actions."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     policy = CleanupPolicy(
         id="execute-test",
@@ -207,7 +207,7 @@ def test_execute_mode_applies_actions(mock_gmail, repository):
 @pytest.mark.smoke
 def test_empty_inbox_handling():
     """Verify graceful handling of empty inbox."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     empty_client = MockGmailClient(inbox_size=0)
     repository = InMemoryGmailCleanupRepository()
@@ -237,7 +237,7 @@ def test_empty_inbox_handling():
 @pytest.mark.smoke
 def test_large_inbox_processing():
     """Verify handling of large inbox with rate limiting."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     large_client = MockGmailClient(inbox_size=1000)
     repository = InMemoryGmailCleanupRepository()
@@ -271,7 +271,7 @@ def test_large_inbox_processing():
 @pytest.mark.smoke
 def test_starred_messages_protected(mock_gmail, repository):
     """Verify starred messages are never touched."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     # Very aggressive policy that should match everything
     policy = CleanupPolicy(
@@ -302,7 +302,7 @@ def test_starred_messages_protected(mock_gmail, repository):
 @pytest.mark.smoke  
 def test_archive_before_delete_pattern(mock_gmail, repository):
     """Verify safe two-phase deletion: archive first, delete later."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     # Phase 1: Archive only
     archive_policy = CleanupPolicy(
@@ -380,7 +380,7 @@ async def test_run_history_for_undo(repository):
 @pytest.mark.asyncio
 async def test_run_persistence_tracking(mock_gmail, repository):
     """Verify runs are persisted for metrics and audit."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     
     initial_count = await repository.get_run_count("user123")
     
@@ -412,7 +412,7 @@ async def test_run_persistence_tracking(mock_gmail, repository):
 @pytest.mark.smoke
 def test_unique_run_ids(mock_gmail, repository):
     """Verify each run has unique ID for tracking."""
-    from src.application.use_cases.gmail_cleanup import ExecuteCleanupUseCase
+    from src.application.gmail_cleanup_use_cases import ExecuteCleanupUseCase
     import time
     
     policy = CleanupPolicy(
