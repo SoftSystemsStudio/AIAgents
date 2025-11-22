@@ -460,20 +460,27 @@
             };
             
             try {
-                const response = await fetch('http://localhost:8000/api/v1/contact', {
+                // Use Web3Forms (free service) - Get your access key at web3forms.com
+                const response = await fetch('https://api.web3forms.com/submit', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify({
+                        access_key: '285a7ae7-d09f-4a2c-8a6c-b8dc84c3e68f', // Get your own key at web3forms.com (free)
+                        subject: `New Lead: ${formData.name} - ${formData.service}`,
+                        from_name: 'Soft Systems Studio Contact Form',
+                        ...formData
+                    })
                 });
                 
                 const data = await response.json();
                 
-                if (response.ok) {
+                if (response.ok && data.success) {
                     // Success
                     formMessage.className = 'p-4 rounded-lg bg-green-900 border border-green-700 text-green-100';
-                    formMessage.textContent = data.message + ' (Lead ID: ' + data.lead_id + ')';
+                    formMessage.textContent = 'Thank you for your interest! We\'ll contact you within 24 hours.';
                     formMessage.classList.remove('hidden');
                     
                     // Reset form
@@ -481,13 +488,13 @@
                 } else {
                     // Error from server
                     formMessage.className = 'p-4 rounded-lg bg-red-900 border border-red-700 text-red-100';
-                    formMessage.textContent = data.detail || 'Failed to submit form. Please try again.';
+                    formMessage.textContent = data.message || 'Failed to submit form. Please try again.';
                     formMessage.classList.remove('hidden');
                 }
             } catch (error) {
                 // Network error
                 formMessage.className = 'p-4 rounded-lg bg-red-900 border border-red-700 text-red-100';
-                formMessage.textContent = 'Network error. Please check your connection and try again.';
+                formMessage.textContent = 'Network error. Please try again or email us at hello@softsystemsstudio.com';
                 formMessage.classList.remove('hidden');
             } finally {
                 // Re-enable button
