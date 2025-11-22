@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "pydantic>=2.5.0",
+    "pydantic[email]>=2.5.0",
     "pydantic-settings>=2.1.0",
     "structlog>=23.2.0",
     "tenacity>=8.2.3",

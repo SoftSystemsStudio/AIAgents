@@ -13,12 +13,8 @@ from pydantic import BaseModel, Field
 
 from src.domain.customer import Customer
 from src.api.auth import get_current_customer
-# TODO: Import use cases when updated for multi-tenancy
-# from src.application.gmail_cleanup_use_cases import (
-#     AnalyzeInboxUseCase,
-#     DryRunCleanupUseCase,
-#     ExecuteCleanupUseCase,
-# )
+from src.infrastructure.usage_tracking import usage_tracking, QuotaExceededError
+from src.infrastructure.customer_repository import customer_repository
 
 router = APIRouter()
 
@@ -199,7 +195,6 @@ async def dry_run_cleanup(
 async def execute_cleanup(
     rules: CleanupRuleRequest,
     customer: Customer = Depends(get_current_customer),
-    # TODO: Add use case and usage tracking dependencies
 ):
     """
     Execute Gmail cleanup - PERMANENTLY DELETE emails.
@@ -215,34 +210,33 @@ async def execute_cleanup(
     
     Counts against monthly email quota.
     """
-    # Check quota before execution
-    # TODO: Load current month's usage from database
-    current_usage_count = 0  # Replace with actual
+    # Check if customer can execute cleanup (daily limit)
+    can_execute, error_msg = usage_tracking.check_can_execute_cleanup(customer)
     
-    if not customer.can_execute_cleanup(daily_count=current_usage_count):
-        # This will be caught by quota_exceeded_handler
-        quota = customer.get_quota()
+    if not can_execute:
+        raise QuotaExceededError(error_msg)
+    
+    # Mock: In production, would execute actual cleanup via use case
+    # For now, simulate deletion
+    emails_deleted = 3421  # Would come from actual execution
+    
+    # Enforce quota for this operation
+    try:
+        usage_tracking.enforce_quota(customer, emails_deleted)
+    except QuotaExceededError as e:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Daily cleanup limit reached ({quota.cleanups_per_day}). Upgrade plan or try tomorrow."
+            detail=str(e)
         )
     
-    # TODO: Execute cleanup use case
-    # result = await execute_use_case.execute(
-    #     customer_id=customer.id,
-    #     rules=rules.dict()
-    # )
+    # Record usage
+    usage_tracking.record_cleanup_executed(
+        customer_id=customer.id,
+        emails_count=emails_deleted,
+    )
     
-    # TODO: Update usage tracking
-    # await usage_tracker.record_cleanup(
-    #     customer_id=customer.id,
-    #     emails_processed=result.emails_deleted,
-    #     period=datetime.utcnow().strftime("%Y-%m")
-    # )
-    
-    # Mock response
-    quota = customer.get_quota()
-    emails_deleted = 3421  # Would come from actual execution
+    # Get updated quota status
+    quota_status = usage_tracking.get_quota_status(customer)
     
     return CleanupExecutionResponse(
         cleanup_run_id=UUID("12345678-1234-1234-1234-123456789abc"),
@@ -252,7 +246,7 @@ async def execute_cleanup(
         errors=[],
         completed_at=datetime.utcnow(),
         quota_used=emails_deleted,
-        quota_remaining=quota.emails_per_month - emails_deleted,
+        quota_remaining=quota_status["emails"]["remaining"],
     )
 
 
@@ -299,7 +293,6 @@ async def get_cleanup_history(
 @router.get("/usage", response_model=UsageResponse)
 async def get_usage_stats(
     customer: Customer = Depends(get_current_customer),
-    # TODO: Add usage tracking repository
 ):
     """
     Get customer's usage stats and quota limits.
@@ -313,26 +306,20 @@ async def get_usage_stats(
     
     Use this to display quota meters in UI.
     """
-    quota = customer.get_quota()
-    
-    # TODO: Load actual usage from database
-    emails_used = 0  # Replace with actual monthly usage
-    cleanups_today = 0  # Replace with actual daily count
-    
-    # Mock usage stats
-    # In production, would call: UsageStats.from_usage_tracking(customer_id, period)
+    # Get real usage from tracking service
+    quota_status = usage_tracking.get_quota_status(customer)
     
     return UsageResponse(
-        plan_tier=customer.plan_tier.value,
-        emails_per_month_limit=quota.emails_per_month,
-        emails_used_this_month=emails_used,
-        emails_remaining=quota.emails_per_month - emails_used,
-        cleanups_per_day_limit=quota.cleanups_per_day,
-        cleanups_today=cleanups_today,
-        cleanups_remaining_today=quota.cleanups_per_day - cleanups_today,
-        is_on_trial=customer.is_on_trial(),
+        plan_tier=quota_status["plan_tier"],
+        emails_per_month_limit=quota_status["emails"]["limit"],
+        emails_used_this_month=quota_status["emails"]["used"],
+        emails_remaining=quota_status["emails"]["remaining"],
+        cleanups_per_day_limit=quota_status["cleanups"]["daily_limit"],
+        cleanups_today=quota_status["cleanups"]["today_count"],
+        cleanups_remaining_today=quota_status["cleanups"]["remaining_today"],
+        is_on_trial=quota_status["trial"]["is_on_trial"],
         trial_ends_at=customer.trial_ends_at,
-        approaching_quota=False,  # Would calculate: emails_used / quota > 0.8
+        approaching_quota=quota_status["emails"]["approaching_limit"],
     )
 
 

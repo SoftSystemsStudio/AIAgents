@@ -48,14 +48,16 @@ class AnalyzeInboxUseCase:
         user_id: str,
         policy: CleanupPolicy,
         max_threads: int = 100,
+        customer_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Analyze inbox and return recommendations.
         
         Args:
-            user_id: User identifier
+            user_id: User identifier (Gmail user)
             policy: Cleanup policy to apply
             max_threads: Maximum threads to analyze
+            customer_id: SaaS customer ID (for multi-tenancy)
             
         Returns:
             Analysis with recommendations
@@ -92,10 +94,12 @@ class AnalyzeInboxUseCase:
                 total_threads=len(threads),
                 total_actions=total_actions,
                 health_score=stats.get_health_score(),
+                customer_id=customer_id,
             )
         
         return {
             "user_id": user_id,
+            "customer_id": customer_id,
             "analyzed_at": datetime.utcnow().isoformat(),
             "snapshot": {
                 "total_threads": len(threads),
@@ -138,14 +142,16 @@ class DryRunCleanupUseCase:
         user_id: str,
         policy: CleanupPolicy,
         max_threads: int = 100,
+        customer_id: Optional[str] = None,
     ) -> CleanupRun:
         """
         Generate dry run cleanup plan.
         
         Args:
-            user_id: User identifier
+            user_id: User identifier (Gmail user)
             policy: Cleanup policy to apply
             max_threads: Maximum threads to process
+            customer_id: SaaS customer ID (for multi-tenancy)
             
         Returns:
             CleanupRun with status DRY_RUN
@@ -212,15 +218,17 @@ class ExecuteCleanupUseCase:
         policy: CleanupPolicy,
         max_threads: int = 100,
         dry_run: bool = False,
+        customer_id: Optional[str] = None,
     ) -> CleanupRun:
         """
         Execute cleanup run.
         
         Args:
-            user_id: User identifier
+            user_id: User identifier (Gmail user)
             policy: Cleanup policy to apply
             max_threads: Maximum threads to process
             dry_run: If True, don't actually execute actions
+            customer_id: SaaS customer ID (for multi-tenancy)
             
         Returns:
             CleanupRun with complete results
@@ -247,6 +255,7 @@ class ExecuteCleanupUseCase:
                 policy_id=policy.id,
                 policy_name=policy.name,
                 dry_run=dry_run,
+                customer_id=customer_id,
             )
         
         try:

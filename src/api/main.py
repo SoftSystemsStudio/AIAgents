@@ -180,15 +180,15 @@ async def root():
 
 
 # Import and register route modules
+from src.api.auth_routes import router as auth_router
 from src.api.gmail_cleanup import router as gmail_router
 
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(gmail_router, prefix="/api/v1/gmail", tags=["Gmail"])
 
 # TODO: Add more routers as they're created
-# from src.api.auth_routes import router as auth_router
 # from src.api.customer_routes import router as customer_router
 # from src.api.billing_routes import router as billing_router
-# app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 # app.include_router(customer_router, prefix="/api/v1/customer", tags=["Customer"])
 # app.include_router(billing_router, prefix="/api/v1/billing", tags=["Billing"])
 
