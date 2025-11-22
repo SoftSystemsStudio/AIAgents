@@ -182,9 +182,11 @@ async def root():
 # Import and register route modules
 from src.api.auth_routes import router as auth_router
 from src.api.gmail_cleanup import router as gmail_router
+from src.api.contact import router as contact_router
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(gmail_router, prefix="/api/v1/gmail", tags=["Gmail"])
+app.include_router(contact_router, prefix="/api/v1", tags=["Contact & Leads"])
 
 # TODO: Add more routers as they're created
 # from src.api.customer_routes import router as customer_router
