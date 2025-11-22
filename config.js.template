@@ -1,0 +1,5 @@
+// Contact form configuration
+// This file is generated from Vercel environment variables
+window.APP_CONFIG = {
+    WEB3FORMS_ACCESS_KEY: '{{ WEB3FORMS_ACCESS_KEY }}'
+};
