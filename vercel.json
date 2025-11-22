@@ -1,17 +1,5 @@
 {
-  "version": 2,
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/landing.html"
-    },
-    {
-      "src": "/landing.html",
-      "dest": "/landing.html"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    }
+  "rewrites": [
+    { "source": "/", "destination": "/landing.html" }
   ]
 }
