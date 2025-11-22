@@ -3,11 +3,16 @@ Contact form API endpoints for lead generation.
 """
 from datetime import datetime
 from typing import Optional
+import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr, validator
 import logging
+import resend
 
 logger = logging.getLogger(__name__)
+
+# Configure Resend
+resend.api_key = os.getenv("RESEND_API_KEY", "")
 
 router = APIRouter()
 
@@ -60,6 +65,123 @@ leads_db = {}
 lead_counter = 1000
 
 
+async def send_notification_emails(lead_data: dict, request: ContactFormRequest):
+    """Send email notifications for new lead."""
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@softsystemsstudio.com")
+    
+    # Service name mapping
+    service_names = {
+        'customer-service-chatbot': 'Customer Service Chatbot',
+        'appointment-booking': 'Appointment/Booking Automation',
+        'data-entry-processing': 'Data Entry/Processing',
+        'email-social-automation': 'Email/Social Media Automation',
+        'custom-solution': 'Custom AI Solution'
+    }
+    service_name = service_names.get(request.service, request.service)
+    
+    try:
+        # Email to admin/sales team
+        admin_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #c0ff6b; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="margin: 0; color: #000;">🚀 New Lead!</h1>
+            </div>
+            <div style="background: #f5f5f5; padding: 30px; border-radius: 0 0 8px 8px;">
+                <h2 style="color: #333;">Lead Details</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Lead ID:</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd;">{lead_data['lead_id']}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Name:</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd;">{request.name}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Email:</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd;"><a href="mailto:{request.email}">{request.email}</a></td>
+                    </tr>
+                    {f'<tr><td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Company:</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">{request.company}</td></tr>' if request.company else ''}
+                    {f'<tr><td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Phone:</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">{request.phone}</td></tr>' if request.phone else ''}
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Service:</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #ddd;">{service_name}</td>
+                    </tr>
+                    {f'<tr><td style="padding: 10px; border-bottom: 1px solid #ddd; font-weight: bold;">Budget:</td><td style="padding: 10px; border-bottom: 1px solid #ddd;">{request.budget}</td></tr>' if request.budget else ''}
+                    <tr>
+                        <td style="padding: 10px; font-weight: bold; vertical-align: top;">Message:</td>
+                        <td style="padding: 10px;">{request.message}</td>
+                    </tr>
+                </table>
+                <div style="margin-top: 20px; padding: 15px; background: #fff; border-left: 4px solid #c0ff6b;">
+                    <strong>⏰ Action Required:</strong> Follow up within 24 hours for best conversion rates!
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        resend.Emails.send({
+            "from": "Soft Systems Studio <noreply@softsystemsstudio.com>",
+            "to": [admin_email],
+            "subject": f"🎯 New Lead: {request.name} - {service_name}",
+            "html": admin_html,
+        })
+        
+        # Confirmation email to customer
+        customer_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #000; padding: 30px; text-align: center;">
+                <h1 style="margin: 0; color: #c0ff6b;">Soft Systems Studio</h1>
+            </div>
+            <div style="padding: 30px; background: #f5f5f5;">
+                <h2 style="color: #333;">Thanks for reaching out, {request.name}! 👋</h2>
+                <p style="font-size: 16px; line-height: 1.6; color: #555;">
+                    We received your inquiry about <strong>{service_name}</strong> and we're excited to help automate your business!
+                </p>
+                <div style="background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #c0ff6b;">
+                    <h3 style="margin-top: 0; color: #333;">What happens next?</h3>
+                    <ol style="color: #555; line-height: 1.8;">
+                        <li>We'll review your requirements (typically within 2-4 hours)</li>
+                        <li>Our team will reach out via email or phone</li>
+                        <li>We'll schedule a free 30-minute consultation</li>
+                        <li>You'll receive a custom proposal within 48 hours</li>
+                    </ol>
+                </div>
+                <p style="font-size: 14px; color: #777;">
+                    <strong>Your Reference ID:</strong> {lead_data['lead_id']}<br>
+                    <strong>Service Requested:</strong> {service_name}
+                </p>
+                <div style="margin-top: 30px; padding: 20px; background: #c0ff6b; border-radius: 8px; text-align: center;">
+                    <p style="margin: 0; color: #000; font-size: 14px;">
+                        <strong>Questions in the meantime?</strong><br>
+                        Reply to this email or call us at <strong>(555) 123-4567</strong>
+                    </p>
+                </div>
+            </div>
+            <div style="padding: 20px; text-align: center; color: #999; font-size: 12px;">
+                <p>© 2025 Soft Systems Studio. All rights reserved.</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        resend.Emails.send({
+            "from": "Soft Systems Studio <hello@softsystemsstudio.com>",
+            "to": [request.email],
+            "subject": "We received your inquiry - Soft Systems Studio",
+            "html": customer_html,
+        })
+        
+        logger.info(f"Emails sent successfully for lead {lead_data['lead_id']}")
+        
+    except Exception as e:
+        logger.error(f"Failed to send emails for lead {lead_data['lead_id']}: {str(e)}")
+        # Don't fail the request if email fails
+
+
 @router.post("/contact", response_model=ContactFormResponse)
 async def submit_contact_form(request: ContactFormRequest):
     """
@@ -98,9 +220,8 @@ async def submit_contact_form(request: ContactFormRequest):
         
         logger.info(f"New lead submitted: {lead_id} - {request.email}")
         
-        # TODO: Send email notifications
-        # await send_notification_to_sales(lead_data)
-        # await send_confirmation_to_customer(request.email, request.name)
+        # Send email notifications
+        await send_notification_emails(lead_data, request)
         
         return ContactFormResponse(
             success=True,
