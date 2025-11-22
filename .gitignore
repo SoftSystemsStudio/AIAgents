@@ -19,6 +19,9 @@ wheels/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
+
+# Frontend config (contains API keys)
+config.js
 .installed.cfg
 *.egg
 MANIFEST

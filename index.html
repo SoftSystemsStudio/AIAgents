@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soft Systems Studio - Custom AI Automation Solutions</title>
+    <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -460,6 +461,13 @@
             };
             
             try {
+                // Get API key from config file
+                const accessKey = window.APP_CONFIG?.WEB3FORMS_ACCESS_KEY;
+                
+                if (!accessKey || accessKey === 'YOUR_KEY_HERE') {
+                    throw new Error('Web3Forms access key not configured. Please add your key to config.js');
+                }
+                
                 // Use Web3Forms (free service) - Get your access key at web3forms.com
                 const response = await fetch('https://api.web3forms.com/submit', {
                     method: 'POST',
@@ -468,7 +476,7 @@
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        access_key: '285a7ae7-d09f-4a2c-8a6c-b8dc84c3e68f', // Get your own key at web3forms.com (free)
+                        access_key: accessKey.trim(),
                         subject: `New Lead: ${formData.name} - ${formData.service}`,
                         from_name: 'Soft Systems Studio Contact Form',
                         ...formData
