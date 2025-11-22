@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soft Systems Studio - Custom AI Automation Solutions</title>
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    
     <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -486,6 +496,16 @@
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
+                    // Track successful form submission in Google Analytics
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'form_submission', {
+                            'event_category': 'Contact',
+                            'event_label': 'Contact Form',
+                            'service': formData.service,
+                            'value': 1
+                        });
+                    }
+                    
                     // Success
                     formMessage.className = 'p-4 rounded-lg bg-green-900 border border-green-700 text-green-100';
                     formMessage.textContent = 'Thank you for your interest! We\'ll contact you within 24 hours.';
