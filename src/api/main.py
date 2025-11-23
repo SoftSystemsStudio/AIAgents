@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import FastAPI, Request, status
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
@@ -71,6 +72,17 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
 )
+
+
+# Optional middleware to enforce a shared DEMO_KEY for demo recording endpoints.
+@app.middleware("http")
+async def demo_key_middleware(request: Request, call_next):
+    demo_key = os.getenv("DEMO_KEY")
+    if demo_key and request.url.path == "/api/v1/demo/record":
+        header_key = request.headers.get("x-demo-key") or request.headers.get("X-DEMO-KEY")
+        if not header_key or header_key != demo_key:
+            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"error": "invalid_demo_key"})
+    return await call_next(request)
 
 
 # Global exception handlers
@@ -183,10 +195,12 @@ async def root():
 from src.api.auth_routes import router as auth_router
 from src.api.gmail_cleanup import router as gmail_router
 from src.api.contact import router as contact_router
+from src.api.demo import router as demo_router
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(gmail_router, prefix="/api/v1/gmail", tags=["Gmail"])
 app.include_router(contact_router, prefix="/api/v1", tags=["Contact & Leads"])
+app.include_router(demo_router, prefix="/api/v1", tags=["Demo Activity"])
 
 # TODO: Add more routers as they're created
 # from src.api.customer_routes import router as customer_router
