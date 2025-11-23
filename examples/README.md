@@ -304,6 +304,157 @@ python examples/gmail_cleanup_agent.py
 
 ---
 
+## Business Agent Examples (Production-Ready)
+
+The following agents are production-ready implementations matching the services offered on our landing page. Each includes comprehensive tools, integration documentation, and test scenarios.
+
+### 12. Email & Social Media Automation Agent (`email_social_automation_agent.py`)
+**Difficulty**: Intermediate  
+**Dependencies**: OpenAI API key  
+**Use Case**: Automate customer communication across email and social platforms
+
+```bash
+python examples/email_social_automation_agent.py
+```
+
+**What you'll learn**:
+- Multi-platform communication automation
+- Sentiment analysis and message classification
+- Tone matching and platform-specific formatting
+- Response generation with context awareness
+
+**Tools included (5)**:
+- `analyze_sentiment` - Detect emotion and urgency in messages
+- `classify_message` - Categorize as inquiry, complaint, appreciation, etc.
+- `generate_email_response` - Create professional email replies
+- `generate_social_response` - Platform-specific social media responses
+- `schedule_message` - Queue messages for optimal timing
+
+**Platforms supported**:
+- Gmail (Email)
+- Twitter (280 char limit)
+- LinkedIn (3000 chars)
+- Facebook (8000 chars)
+- Instagram (2200 chars)
+
+**Integration APIs**:
+- Gmail API, Twitter API, LinkedIn API, Facebook Graph API, Instagram API
+
+---
+
+### 13. Data Processing Agent (`data_processing_agent.py`)
+**Difficulty**: Intermediate  
+**Dependencies**: OpenAI API key  
+**Use Case**: Automate data entry, validation, cleaning, and transformation
+
+```bash
+python examples/data_processing_agent.py
+```
+
+**What you'll learn**:
+- Extract structured data from unstructured text
+- Validate data against business rules
+- Transform between formats (CSV, JSON, XML, Excel)
+- Detect duplicates and clean inconsistent data
+- Generate data quality reports
+
+**Tools included (6)**:
+- `extract_data_from_text` - Pull contact info, invoices, addresses from text
+- `validate_data` - Check data against validation rules
+- `transform_data_format` - Convert between CSV, JSON, XML, Excel
+- `detect_duplicates` - Find duplicate records with fuzzy matching
+- `clean_data` - Fix formatting, trim whitespace, standardize values
+- `generate_quality_report` - Score completeness, accuracy, consistency
+
+**Data types supported**:
+- Contact information (name, email, phone, address)
+- Invoices (invoice number, date, amount, vendor, customer)
+- Addresses (street, city, state, zip, country)
+
+**Integration APIs**:
+- Google Sheets API, Airtable API, Salesforce API, QuickBooks API, OCR engines
+
+---
+
+### 14. Appointment Booking Agent (`appointment_booking_agent.py`)
+**Difficulty**: Intermediate  
+**Dependencies**: OpenAI API key  
+**Use Case**: Automate appointment scheduling, calendar management, and reminders
+
+```bash
+python examples/appointment_booking_agent.py
+```
+
+**What you'll learn**:
+- Calendar availability checking across multiple resources
+- Smart slot finding with business rules
+- Automated booking confirmations
+- Rescheduling and cancellation workflows
+- Multi-reminder system (24h, 2h, 15min before)
+
+**Tools included (7)**:
+- `check_availability` - Verify if specific time slot is available
+- `find_available_slots` - Search for open slots within date range
+- `create_booking` - Book appointment with details
+- `send_booking_confirmation` - Email/SMS confirmation to customer
+- `reschedule_appointment` - Move existing appointment to new time
+- `cancel_appointment` - Cancel with notification
+- `send_appointment_reminder` - Automated reminder emails/SMS
+
+**Features**:
+- Business hours enforcement (Mon-Fri 9 AM - 5 PM, excludes lunch)
+- Time zone conversion (PST/PDT support)
+- Buffer time management (15 min between appointments)
+- Multi-calendar support
+
+**Integration APIs**:
+- Google Calendar API, Microsoft Outlook API, Calendly API, Zoom API, Twilio (SMS), SendGrid (email)
+
+---
+
+### 15. Customer Service Chatbot Agent (`customer_service_chatbot_agent.py`)
+**Difficulty**: Intermediate  
+**Dependencies**: OpenAI API key  
+**Use Case**: 24/7 automated customer support with smart escalation
+
+```bash
+python examples/customer_service_chatbot_agent.py
+```
+
+**What you'll learn**:
+- Knowledge base search for instant answers
+- Order status tracking and account information
+- Support ticket creation for complex issues
+- Smart escalation to human agents
+- Refund processing with approval workflows
+- Customer satisfaction tracking
+
+**Tools included (7)**:
+- `search_knowledge_base` - Search KB for pricing, features, support info
+- `check_order_status` - Look up current order progress
+- `get_account_information` - Retrieve customer account details
+- `create_support_ticket` - Create ticket for technical issues
+- `escalate_to_human` - Escalate complex/sensitive issues to humans
+- `process_refund_request` - Handle refund requests
+- `track_customer_satisfaction` - Record CSAT scores and feedback
+
+**Escalation triggers**:
+- Customer is angry/frustrated
+- Technical issues beyond chatbot capability
+- Refund requests over $1000
+- Customer specifically requests human
+
+**Integration APIs**:
+- Zendesk API, Intercom API, Freshdesk API, Stripe (refunds), custom knowledge base
+
+**Business impact**:
+- Reduce support costs by 60-80%
+- Instant response time (vs hours)
+- Handle 10x more inquiries
+- 24/7 availability
+
+---
+
 ## Example Output
 
 Each example provides detailed output including:
