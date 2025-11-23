@@ -1,4 +1,59 @@
-# Tawk.to Live Chat Setup Guide
+# Tawk.to Live Chat Setup & Demo Integration Guide
+
+## Current Status
+
+✅ **Tawk.to Widget**: Active on live site  
+✅ **Demo Integration**: Passes visitor context to chat agents  
+✅ **Proactive Triggers**: Auto-opens after 2 demos  
+✅ **Analytics Integration**: Tracks chat engagement
+
+## What Chat Agents See
+
+When a visitor opens chat, agents automatically see:
+
+**Visitor Attributes**:
+- `last_demo_agent`: email | data | booking | support
+- `last_scenario`: The specific scenario they tried
+- `demos_completed`: Total number of demos run
+- `interest_level`: high (3+) | medium (2) | low (1) | none (0)
+
+**Example Context**:
+```
+Visitor tried: Customer Support Agent
+Last scenario: Pricing Question  
+Demos completed: 2
+Interest level: Medium
+```
+
+## Smart Chat Triggers
+
+### Automatic Popup (After 2 Demos)
+When a visitor completes their 2nd demo, the chat automatically opens with context.
+
+**Why 2 demos?**
+- Shows genuine interest (not just curiosity)
+- Visitor understands the product
+- Perfect moment to offer human help
+- Converts 3x better than cold chat
+
+### Agent Best Practices
+
+**Opening Based on Context**:
+
+If they tried **Email & Social Agent**:
+> "Hi! I see you tried our Email & Social Media agent. Are you looking to automate customer communication? I can show you how to integrate it with your existing tools."
+
+If they tried **Data Processing**:
+> "Hey there! Noticed you're interested in data automation. What kind of data are you currently processing manually?"
+
+If they tried **Appointment Booking**:
+> "Hi! I see scheduling is important to you. Are you currently using Google Calendar or another system?"
+
+If they tried **Customer Support**:
+> "Hello! Looking to automate customer service? How many support tickets do you handle monthly?"
+
+**For High Interest (3+ demos)**:
+> "Wow, you've really explored our agents! 🎉 You seem very interested. Want to jump on a quick call to discuss your specific use case?"
 
 ## Why Live Chat?
 

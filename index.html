@@ -920,6 +920,38 @@ Please reach out regarding new automation project.</textarea>
     <!-- Tawk.to Live Chat -->
     <script type="text/javascript">
         var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+        
+        // Pass demo context to Tawk.to when chat loads
+        Tawk_API.onLoad = function(){
+            const demoData = {
+                last_demo_agent: localStorage.getItem('last_demo_agent') || 'none',
+                last_demo_scenario: localStorage.getItem('last_demo_scenario') || 'none',
+                total_demos_run: localStorage.getItem('demo_user_count') || '0',
+                demo_interest_level: getDemoInterestLevel()
+            };
+            
+            // Set visitor attributes
+            Tawk_API.setAttributes({
+                'last_demo_agent': demoData.last_demo_agent,
+                'last_scenario': demoData.last_demo_scenario,
+                'demos_completed': demoData.total_demos_run,
+                'interest_level': demoData.demo_interest_level
+            }, function(error){
+                if(error) console.log('Tawk.to attributes error:', error);
+            });
+            
+            // Add context message visible to agents
+            if (demoData.last_demo_agent !== 'none') {
+                Tawk_API.addEvent('demo_context', {
+                    agent: demoData.last_demo_agent,
+                    scenario: demoData.last_demo_scenario,
+                    total: demoData.total_demos_run
+                }, function(error){
+                    if(error) console.log('Tawk.to event error:', error);
+                });
+            }
+        };
+        
         (function(){
             var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
             s1.async=true;
@@ -928,12 +960,22 @@ Please reach out regarding new automation project.</textarea>
             s1.setAttribute('crossorigin','*');
             s0.parentNode.insertBefore(s1,s0);
         })();
+        
+        // Helper function to calculate interest level
+        function getDemoInterestLevel() {
+            const count = parseInt(localStorage.getItem('demo_user_count') || '0');
+            if (count >= 3) return 'high';
+            if (count >= 2) return 'medium';
+            if (count >= 1) return 'low';
+            return 'none';
+        }
     </script>
 
     <!-- Interactive Demo Scripts -->
     <script>
         // Demo counter from localStorage
         let demoCount = parseInt(localStorage.getItem('demoCount') || '2847');
+        let userDemoCount = parseInt(localStorage.getItem('demo_user_count') || '0');
         document.getElementById('demo-counter').textContent = demoCount;
 
         // Tab switching
@@ -950,6 +992,9 @@ Please reach out regarding new automation project.</textarea>
             });
             document.getElementById(`tab-${type}`).classList.remove('bg-gray-800', 'text-gray-300');
             document.getElementById(`tab-${type}`).classList.add('bg-lime-500', 'text-gray-900');
+            
+            // Store current agent for Tawk.to context
+            localStorage.setItem('last_demo_agent', type);
             
             // Track tab switch
             if (typeof gtag !== 'undefined') {
@@ -973,6 +1018,9 @@ Please reach out regarding new automation project.</textarea>
             };
             
             input.value = scenarios[scenario] || "";
+            
+            // Store scenario for Tawk.to context
+            localStorage.setItem('last_demo_scenario', scenario);
             
             // Track scenario selection
             if (typeof gtag !== 'undefined' && scenario !== 'custom') {
@@ -1310,8 +1358,28 @@ Please reach out regarding new automation project.</textarea>
 
         function incrementDemoCounter() {
             demoCount++;
+            userDemoCount++;
             localStorage.setItem('demoCount', demoCount);
+            localStorage.setItem('demo_user_count', userDemoCount);
             document.getElementById('demo-counter').textContent = demoCount;
+            
+            // Update Tawk.to attributes if loaded
+            if (typeof Tawk_API !== 'undefined' && Tawk_API.setAttributes) {
+                Tawk_API.setAttributes({
+                    'demos_completed': userDemoCount.toString(),
+                    'interest_level': getDemoInterestLevel()
+                }, function(error){});
+            }
+            
+            // Proactive chat trigger after 2 demos (high interest)
+            if (userDemoCount === 2 && typeof Tawk_API !== 'undefined' && !localStorage.getItem('chat_triggered')) {
+                setTimeout(() => {
+                    if (typeof Tawk_API.maximize === 'function') {
+                        Tawk_API.maximize();
+                        localStorage.setItem('chat_triggered', 'true');
+                    }
+                }, 2000);
+            }
             
             // Track milestone events
             if (typeof gtag !== 'undefined') {
