@@ -1,22 +1,108 @@
-# Google Analytics Setup Guide
+# Google Analytics Setup & Demo Tracking Guide
 
-## Step 1: Create Google Analytics Account
+## Current Status
 
-1. Go to https://analytics.google.com/
-2. Click "Start measuring" or "Admin" (gear icon)
-3. Create an Account:
-   - Account Name: `Soft Systems Studio`
-4. Create a Property:
-   - Property Name: `AI Agents Landing Page`
-   - Time zone: Your timezone
-   - Currency: USD
-5. Configure Data Stream:
-   - Platform: **Web**
-   - Website URL: `https://ai-agents-ruddy.vercel.app`
-   - Stream name: `Landing Page`
-6. Copy your **Measurement ID** (looks like `G-XXXXXXXXXX`)
+✅ **Google Analytics Active**: Property ID `G-8KJVEMXLGQ`  
+✅ **Demo Event Tracking**: Implemented and active  
+✅ **Conversion Tracking**: CTA clicks monitored
 
-## Step 2: Add Measurement ID to Your Site
+## Demo Events Being Tracked
+
+### 1. Demo Tab Switching
+**Event Name**: `demo_tab_switch`  
+**Triggered**: When user clicks between Email, Data, Booking, or Support tabs  
+**Parameters**:
+- `agent_type`: email | data | booking | support
+- `event_category`: Demo Interaction
+
+### 2. Scenario Selection
+**Event Name**: `demo_scenario_select`  
+**Triggered**: When user selects a scenario from dropdown  
+**Parameters**:
+- `agent_type`: email | data | booking | support
+- `scenario`: inquiry | complaint | linkedin | extract | clean | validate | pricing | order | technical | refund
+- `event_category`: Demo Interaction
+
+### 3. Demo Completion
+**Event Name**: `demo_completed`  
+**Triggered**: When demo finishes processing and shows output  
+**Parameters**:
+- `agent_type`: email | data | booking | support
+- `scenario`: (scenario name)
+- `event_category`: Demo Completion
+
+### 4. Demo Milestones
+**Event Name**: `demo_milestone`  
+**Triggered**: Every 100 demos (counter hits 2900, 3000, 3100, etc.)  
+**Parameters**:
+- `milestone`: 100 | 200 | 300 | ...
+- `event_category`: Demo Engagement
+
+### 5. Demo to Consultation
+**Event Name**: `demo_to_consultation`  
+**Triggered**: When user clicks "Book a Free Consultation" CTA  
+**Parameters**:
+- `event_category`: Conversion
+- `event_label`: Demo Section CTA
+
+## Google Analytics 4 Dashboard Setup
+
+### Quick Access Queries
+
+**Most Popular Agent**:
+```
+GA4: Reports → Engagement → Events → demo_tab_switch
+Group by: agent_type
+Metric: Event count
+```
+
+**Completion Rate**:
+```
+Calculate: (demo_completed count / demo_tab_switch count) × 100
+Target: >60%
+```
+
+**Conversion Rate**:
+```
+Calculate: (demo_to_consultation / demo_completed) × 100
+Target: >10%
+```
+
+### Creating Custom Exploration
+
+1. Go to **Explore** section in GA4
+2. Create **Funnel Exploration**
+3. Add steps:
+   - Step 1: `page_view` (landing page)
+   - Step 2: `demo_tab_switch` (engaged)
+   - Step 3: `demo_completed` (completed)
+   - Step 4: `demo_to_consultation` (converted)
+   - Step 5: `form_submit` (booked)
+
+## Key Metrics to Monitor
+
+| Metric | How to Calculate | Target |
+|--------|------------------|--------|
+| **Demo Engagement Rate** | Users who clicked demo / Total visitors | >40% |
+| **Demo Completion Rate** | demo_completed / demo_tab_switch | >60% |
+| **Demos per User** | demo_completed / Unique users | >2.0 |
+| **Conversion Rate** | demo_to_consultation / demo_completed | >10% |
+| **Top Agent** | Most clicked demo_tab_switch | Track trend |
+
+## Weekly Analytics Checklist
+
+- [ ] Review total demos completed (compare to last week)
+- [ ] Check which agent is most popular
+- [ ] Calculate completion rate (should be >60%)
+- [ ] Calculate conversion rate (should be >10%)
+- [ ] Review top scenarios per agent
+- [ ] Check average demos per user
+- [ ] Identify drop-off points
+- [ ] Test all demo buttons working
+
+## Setup Instructions for New GA4 Properties
+
+### Step 1: Create Google Analytics Account
 
 Replace `G-XXXXXXXXXX` in `index.html` with your actual Measurement ID:
 

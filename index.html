@@ -692,7 +692,7 @@ Please reach out regarding new automation project.</textarea>
 
                 <div class="text-center mt-8">
                     <p class="text-gray-400 mb-4">Like what you see? Get your own custom AI agent deployed.</p>
-                    <a href="#contact">
+                    <a href="#contact" onclick="trackDemoToConsultation()">
                         <button class="bg-lime-500 text-gray-900 px-8 py-3 rounded-lg font-semibold hover:bg-lime-400 transition-all">
                             Book a Free Consultation
                         </button>
@@ -950,6 +950,14 @@ Please reach out regarding new automation project.</textarea>
             });
             document.getElementById(`tab-${type}`).classList.remove('bg-gray-800', 'text-gray-300');
             document.getElementById(`tab-${type}`).classList.add('bg-lime-500', 'text-gray-900');
+            
+            // Track tab switch
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'demo_tab_switch', {
+                    'agent_type': type,
+                    'event_category': 'Demo Interaction'
+                });
+            }
         }
 
         // Email Demo
@@ -965,6 +973,15 @@ Please reach out regarding new automation project.</textarea>
             };
             
             input.value = scenarios[scenario] || "";
+            
+            // Track scenario selection
+            if (typeof gtag !== 'undefined' && scenario !== 'custom') {
+                gtag('event', 'demo_scenario_select', {
+                    'agent_type': 'email',
+                    'scenario': scenario,
+                    'event_category': 'Demo Interaction'
+                });
+            }
         }
 
         function runEmailDemo() {
@@ -1019,6 +1036,15 @@ Please reach out regarding new automation project.</textarea>
                 `;
                 
                 incrementDemoCounter();
+                
+                // Track demo completion
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'demo_completed', {
+                        'agent_type': 'email',
+                        'scenario': type,
+                        'event_category': 'Demo Completion'
+                    });
+                }
             }, 1200);
         }
 
@@ -1035,6 +1061,15 @@ Please reach out regarding new automation project.</textarea>
             };
             
             input.value = scenarios[scenario] || "";
+            
+            // Track scenario selection
+            if (typeof gtag !== 'undefined' && scenario !== 'custom') {
+                gtag('event', 'demo_scenario_select', {
+                    'agent_type': 'data',
+                    'scenario': scenario,
+                    'event_category': 'Demo Interaction'
+                });
+            }
         }
 
         function runDataDemo() {
@@ -1095,6 +1130,15 @@ Please reach out regarding new automation project.</textarea>
                 
                 output.innerHTML = result;
                 incrementDemoCounter();
+                
+                // Track demo completion
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'demo_completed', {
+                        'agent_type': 'data',
+                        'scenario': scenario,
+                        'event_category': 'Demo Completion'
+                    });
+                }
             }, 1000);
         }
 
@@ -1156,6 +1200,16 @@ Please reach out regarding new automation project.</textarea>
                 `;
                 
                 incrementDemoCounter();
+                
+                // Track demo completion
+                if (typeof gtag !== 'undefined') {
+                    const service = document.getElementById('booking-service').value;
+                    gtag('event', 'demo_completed', {
+                        'agent_type': 'booking',
+                        'service': service,
+                        'event_category': 'Demo Completion'
+                    });
+                }
             }, 800);
         }
 
@@ -1173,6 +1227,15 @@ Please reach out regarding new automation project.</textarea>
             };
             
             input.value = scenarios[scenario] || "";
+            
+            // Track scenario selection
+            if (typeof gtag !== 'undefined' && scenario !== 'custom') {
+                gtag('event', 'demo_scenario_select', {
+                    'agent_type': 'support',
+                    'scenario': scenario,
+                    'event_category': 'Demo Interaction'
+                });
+            }
         }
 
         function runSupportDemo() {
@@ -1233,6 +1296,15 @@ Please reach out regarding new automation project.</textarea>
                 `;
                 
                 incrementDemoCounter();
+                
+                // Track demo completion
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'demo_completed', {
+                        'agent_type': 'support',
+                        'scenario': scenario,
+                        'event_category': 'Demo Completion'
+                    });
+                }
             }, 600);
         }
 
@@ -1240,6 +1312,26 @@ Please reach out regarding new automation project.</textarea>
             demoCount++;
             localStorage.setItem('demoCount', demoCount);
             document.getElementById('demo-counter').textContent = demoCount;
+            
+            // Track milestone events
+            if (typeof gtag !== 'undefined') {
+                if (demoCount % 100 === 0) {
+                    gtag('event', 'demo_milestone', {
+                        'milestone': demoCount,
+                        'event_category': 'Demo Engagement'
+                    });
+                }
+            }
+        }
+        
+        // Track demo to consultation conversion
+        function trackDemoToConsultation() {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'demo_to_consultation', {
+                    'event_category': 'Conversion',
+                    'event_label': 'Demo Section CTA'
+                });
+            }
         }
 
         // Initialize first scenario
