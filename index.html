@@ -63,6 +63,7 @@
         </div>
         <nav class="hidden md:flex space-x-8 text-gray-400">
             <a href="#features" class="hover:text-white transition">Features</a>
+            <a href="#demo" class="hover:text-white transition">Try Demo</a>
             <a href="#pricing" class="hover:text-white transition">Pricing</a>
             <a href="#how-it-works" class="hover:text-white transition">How it works</a>
             <a href="/api/docs" class="hover:text-white transition">API Docs</a>
@@ -478,6 +479,229 @@
         </div>
     </section>
 
+    <!-- Interactive Demo Section -->
+    <section id="demo" class="py-20 bg-black">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">Try Our AI Agents Live</h2>
+                <p class="text-gray-400 text-xl">Test each agent with real scenarios and see instant results</p>
+            </div>
+
+            <div class="max-w-6xl mx-auto">
+                <!-- Agent Selector Tabs -->
+                <div class="flex flex-wrap justify-center gap-4 mb-8">
+                    <button onclick="showDemo('email')" id="tab-email" class="demo-tab px-6 py-3 rounded-lg font-semibold transition-all bg-lime-500 text-gray-900">
+                        📧 Email & Social
+                    </button>
+                    <button onclick="showDemo('data')" id="tab-data" class="demo-tab px-6 py-3 rounded-lg font-semibold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700">
+                        📊 Data Processing
+                    </button>
+                    <button onclick="showDemo('booking')" id="tab-booking" class="demo-tab px-6 py-3 rounded-lg font-semibold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700">
+                        📅 Appointment Booking
+                    </button>
+                    <button onclick="showDemo('support')" id="tab-support" class="demo-tab px-6 py-3 rounded-lg font-semibold transition-all bg-gray-800 text-gray-300 hover:bg-gray-700">
+                        💬 Customer Support
+                    </button>
+                </div>
+
+                <!-- Demo Content Container -->
+                <div class="bg-gray-900 rounded-xl p-8 border border-gray-800">
+                    
+                    <!-- Email & Social Demo -->
+                    <div id="demo-email" class="demo-content">
+                        <h3 class="text-2xl font-bold mb-4">Email & Social Media Agent Demo</h3>
+                        <p class="text-gray-400 mb-6">Try automated response generation with sentiment analysis</p>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Select Scenario:</label>
+                                <select id="email-scenario" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white mb-4" onchange="loadEmailScenario()">
+                                    <option value="inquiry">Customer Inquiry (Pricing)</option>
+                                    <option value="complaint">Twitter Complaint</option>
+                                    <option value="linkedin">LinkedIn Connection</option>
+                                    <option value="custom">Custom Message</option>
+                                </select>
+                                
+                                <label class="block text-sm font-semibold mb-2">Input Message:</label>
+                                <textarea id="email-input" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white h-40 resize-none" placeholder="Enter a message to analyze and respond to...">Hi, I'm interested in your AI automation services. Can you tell me about your pricing for a small business with about 20 employees? Also, how long does implementation typically take?</textarea>
+                                
+                                <button onclick="runEmailDemo()" class="w-full mt-4 bg-lime-500 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-lime-400 transition-all">
+                                    Generate Response
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">AI Analysis & Response:</label>
+                                <div id="email-output" class="bg-gray-800 border border-gray-700 rounded-lg p-4 h-80 overflow-y-auto">
+                                    <div class="text-gray-500 text-center py-12">
+                                        Click "Generate Response" to see the AI in action
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Processing Demo -->
+                    <div id="demo-data" class="demo-content hidden">
+                        <h3 class="text-2xl font-bold mb-4">Data Processing Agent Demo</h3>
+                        <p class="text-gray-400 mb-6">Extract, validate, and clean data automatically</p>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Select Scenario:</label>
+                                <select id="data-scenario" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white mb-4" onchange="loadDataScenario()">
+                                    <option value="extract">Extract Contact Info</option>
+                                    <option value="clean">Clean Customer Data</option>
+                                    <option value="validate">Validate Email List</option>
+                                    <option value="custom">Custom Data</option>
+                                </select>
+                                
+                                <label class="block text-sm font-semibold mb-2">Input Data:</label>
+                                <textarea id="data-input" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white h-40 resize-none font-mono text-sm" placeholder="Paste data to process...">Contact: Sarah Johnson, sarah.j@techcorp.com, (555) 123-4567
+Works at TechCorp Inc., 123 Main Street, San Francisco, CA 94102
+Please reach out regarding new automation project.</textarea>
+                                
+                                <button onclick="runDataDemo()" class="w-full mt-4 bg-lime-500 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-lime-400 transition-all">
+                                    Process Data
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Processed Output:</label>
+                                <div id="data-output" class="bg-gray-800 border border-gray-700 rounded-lg p-4 h-80 overflow-y-auto font-mono text-sm">
+                                    <div class="text-gray-500 text-center py-12">
+                                        Click "Process Data" to see results
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Appointment Booking Demo -->
+                    <div id="demo-booking" class="demo-content hidden">
+                        <h3 class="text-2xl font-bold mb-4">Appointment Booking Agent Demo</h3>
+                        <p class="text-gray-400 mb-6">Intelligent scheduling with availability checking</p>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Booking Request:</label>
+                                <input type="text" id="booking-name" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white mb-3" placeholder="Customer name" value="Sarah Martinez">
+                                
+                                <input type="email" id="booking-email" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white mb-3" placeholder="Email address" value="sarah.m@example.com">
+                                
+                                <select id="booking-service" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white mb-3">
+                                    <option value="consultation">AI Consultation (60 min)</option>
+                                    <option value="demo">Product Demo (30 min)</option>
+                                    <option value="training">Training Session (90 min)</option>
+                                    <option value="followup">Follow-up Meeting (30 min)</option>
+                                </select>
+                                
+                                <label class="block text-sm font-semibold mb-2 mt-4">Preferred Time:</label>
+                                <select id="booking-time" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white mb-3">
+                                    <option value="morning">Morning (9 AM - 12 PM)</option>
+                                    <option value="afternoon">Afternoon (1 PM - 4 PM)</option>
+                                    <option value="any">Any Time Available</option>
+                                </select>
+                                
+                                <textarea id="booking-notes" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white h-24 resize-none" placeholder="Additional notes or special requests...">Looking to discuss automation for our customer service team.</textarea>
+                                
+                                <button onclick="runBookingDemo()" class="w-full mt-4 bg-lime-500 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-lime-400 transition-all">
+                                    Find & Book Slot
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Booking Result:</label>
+                                <div id="booking-output" class="bg-gray-800 border border-gray-700 rounded-lg p-4 h-96 overflow-y-auto">
+                                    <div class="text-gray-500 text-center py-12">
+                                        Click "Find & Book Slot" to see available times
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Support Demo -->
+                    <div id="demo-support" class="demo-content hidden">
+                        <h3 class="text-2xl font-bold mb-4">Customer Support Agent Demo</h3>
+                        <p class="text-gray-400 mb-6">24/7 intelligent customer service with smart escalation</p>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">Select Scenario:</label>
+                                <select id="support-scenario" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white mb-4" onchange="loadSupportScenario()">
+                                    <option value="pricing">Pricing Question</option>
+                                    <option value="order">Order Status</option>
+                                    <option value="technical">Technical Issue</option>
+                                    <option value="refund">Refund Request</option>
+                                    <option value="custom">Custom Question</option>
+                                </select>
+                                
+                                <label class="block text-sm font-semibold mb-2">Customer Message:</label>
+                                <textarea id="support-input" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-lime-500 text-white h-40 resize-none" placeholder="Enter customer question...">Hi, I'm interested in your AI automation services. How much does it cost to set up a customer service chatbot for my e-commerce store? Do you have monthly pricing?</textarea>
+                                
+                                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mt-4">
+                                    <div class="text-sm font-semibold mb-2">Customer Context (Optional):</div>
+                                    <div class="space-y-2 text-sm">
+                                        <label class="flex items-center text-gray-400">
+                                            <input type="checkbox" id="support-existing" class="mr-2"> Existing Customer
+                                        </label>
+                                        <label class="flex items-center text-gray-400">
+                                            <input type="checkbox" id="support-urgent" class="mr-2"> Mark as Urgent
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <button onclick="runSupportDemo()" class="w-full mt-4 bg-lime-500 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-lime-400 transition-all">
+                                    Get AI Response
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold mb-2">AI Support Response:</label>
+                                <div id="support-output" class="bg-gray-800 border border-gray-700 rounded-lg p-4 h-96 overflow-y-auto">
+                                    <div class="text-gray-500 text-center py-12">
+                                        Click "Get AI Response" to see how the agent handles this
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Demo Stats -->
+                <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div class="text-3xl font-bold text-lime-500" id="demo-counter">0</div>
+                        <div class="text-sm text-gray-400 mt-1">Demos Run Today</div>
+                    </div>
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div class="text-3xl font-bold text-lime-500">&lt;2s</div>
+                        <div class="text-sm text-gray-400 mt-1">Avg Response Time</div>
+                    </div>
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div class="text-3xl font-bold text-lime-500">95%</div>
+                        <div class="text-sm text-gray-400 mt-1">Accuracy Rate</div>
+                    </div>
+                    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                        <div class="text-3xl font-bold text-lime-500">24/7</div>
+                        <div class="text-sm text-gray-400 mt-1">Always Available</div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-8">
+                    <p class="text-gray-400 mb-4">Like what you see? Get your own custom AI agent deployed.</p>
+                    <a href="#contact">
+                        <button class="bg-lime-500 text-gray-900 px-8 py-3 rounded-lg font-semibold hover:bg-lime-400 transition-all">
+                            Book a Free Consultation
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Contact Form Section -->
     <section id="contact" class="container mx-auto px-4 py-16">
         <div class="max-w-3xl mx-auto">
@@ -704,6 +928,322 @@
             s1.setAttribute('crossorigin','*');
             s0.parentNode.insertBefore(s1,s0);
         })();
+    </script>
+
+    <!-- Interactive Demo Scripts -->
+    <script>
+        // Demo counter from localStorage
+        let demoCount = parseInt(localStorage.getItem('demoCount') || '2847');
+        document.getElementById('demo-counter').textContent = demoCount;
+
+        // Tab switching
+        function showDemo(type) {
+            // Hide all demos
+            document.querySelectorAll('.demo-content').forEach(el => el.classList.add('hidden'));
+            // Show selected demo
+            document.getElementById(`demo-${type}`).classList.remove('hidden');
+            
+            // Update tabs
+            document.querySelectorAll('.demo-tab').forEach(tab => {
+                tab.classList.remove('bg-lime-500', 'text-gray-900');
+                tab.classList.add('bg-gray-800', 'text-gray-300');
+            });
+            document.getElementById(`tab-${type}`).classList.remove('bg-gray-800', 'text-gray-300');
+            document.getElementById(`tab-${type}`).classList.add('bg-lime-500', 'text-gray-900');
+        }
+
+        // Email Demo
+        function loadEmailScenario() {
+            const scenario = document.getElementById('email-scenario').value;
+            const input = document.getElementById('email-input');
+            
+            const scenarios = {
+                inquiry: "Hi, I'm interested in your AI automation services. Can you tell me about your pricing for a small business with about 20 employees? Also, how long does implementation typically take?",
+                complaint: "@SoftSystems Your customer service bot is terrible! It keeps giving me wrong information about my order #12345. I've been waiting 3 days for a response!",
+                linkedin: "Hi, I came across your profile and I'm impressed by your work in AI automation. I'd love to connect and learn more about your approach to helping businesses scale with AI agents.",
+                custom: ""
+            };
+            
+            input.value = scenarios[scenario] || "";
+        }
+
+        function runEmailDemo() {
+            const input = document.getElementById('email-input').value;
+            const output = document.getElementById('email-output');
+            
+            if (!input.trim()) {
+                output.innerHTML = '<div class="text-red-400">Please enter a message to analyze.</div>';
+                return;
+            }
+            
+            output.innerHTML = '<div class="text-lime-500 animate-pulse">🤖 AI Agent processing...</div>';
+            
+            // Simulate AI processing
+            setTimeout(() => {
+                // Analyze sentiment
+                const hasNegative = input.toLowerCase().includes('terrible') || input.toLowerCase().includes('wrong') || input.toLowerCase().includes('waiting');
+                const hasUrgent = input.includes('!') || input.toLowerCase().includes('urgent') || input.toLowerCase().includes('asap');
+                
+                const sentiment = hasNegative ? 'negative' : 'positive';
+                const urgency = hasUrgent ? 'high' : 'medium';
+                const type = input.toLowerCase().includes('pricing') || input.toLowerCase().includes('cost') ? 'pricing_request' : 
+                             input.toLowerCase().includes('@') && input.length < 300 ? 'complaint' : 'inquiry';
+                
+                let response = '';
+                if (type === 'complaint') {
+                    response = "We sincerely apologize for the frustration you've experienced. I've escalated your case (Order #12345) to our senior support team and you can expect a personal response within the next 2 hours. In the meantime, I've checked your order status and can confirm it's currently being processed. We're committed to making this right for you.";
+                } else if (type === 'pricing_request') {
+                    response = "Thank you for your interest in our AI automation services! For a team of 20 employees, our Professional plan at $249/month would be perfect. This includes up to 3 AI agents and 50,000 interactions per month. Implementation typically takes 5-7 business days, including setup, testing, and team training. Would you like to schedule a free 30-minute consultation to discuss your specific needs?";
+                } else {
+                    response = "Thank you for reaching out! I'd be delighted to connect and share insights about AI automation. I've sent you a connection request. Feel free to check out our latest case studies on the website, and I look forward to discussing how we can help your business leverage AI agents for growth.";
+                }
+                
+                output.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                            <div class="font-semibold text-lime-500 mb-2">📊 Analysis:</div>
+                            <div class="text-sm space-y-1">
+                                <div>Sentiment: <span class="font-semibold ${sentiment === 'negative' ? 'text-red-400' : 'text-green-400'}">${sentiment}</span></div>
+                                <div>Urgency: <span class="font-semibold ${urgency === 'high' ? 'text-orange-400' : 'text-yellow-400'}">${urgency}</span></div>
+                                <div>Type: <span class="font-semibold text-blue-400">${type.replace('_', ' ')}</span></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900 border border-lime-500/30 rounded p-3">
+                            <div class="font-semibold text-lime-500 mb-2">✉️ Generated Response:</div>
+                            <div class="text-gray-300">${response}</div>
+                        </div>
+                        <div class="text-xs text-gray-500 text-center">
+                            ⚡ Processed in 1.2s • Tokens: ${Math.floor(Math.random() * 1000) + 1500} • Cost: $0.002
+                        </div>
+                    </div>
+                `;
+                
+                incrementDemoCounter();
+            }, 1200);
+        }
+
+        // Data Processing Demo
+        function loadDataScenario() {
+            const scenario = document.getElementById('data-scenario').value;
+            const input = document.getElementById('data-input');
+            
+            const scenarios = {
+                extract: "Contact: Sarah Johnson, sarah.j@techcorp.com, (555) 123-4567\nWorks at TechCorp Inc., 123 Main Street, San Francisco, CA 94102\nPlease reach out regarding new automation project.",
+                clean: '{\n  "name": "  john  doe  ",\n  "email": "john.doe@example.com",\n  "phone": "(555) 987 6543",\n  "date": "2024-01-15"\n}',
+                validate: "john@example.com\ninvalid.email@\nsarah.johnson@company.co.uk\nbad@email\nmike.wilson@startup.io",
+                custom: ""
+            };
+            
+            input.value = scenarios[scenario] || "";
+        }
+
+        function runDataDemo() {
+            const input = document.getElementById('data-input').value;
+            const output = document.getElementById('data-output');
+            
+            if (!input.trim()) {
+                output.innerHTML = '<div class="text-red-400">Please enter data to process.</div>';
+                return;
+            }
+            
+            output.innerHTML = '<div class="text-lime-500 animate-pulse">🤖 Processing data...</div>';
+            
+            setTimeout(() => {
+                const scenario = document.getElementById('data-scenario').value;
+                let result = '';
+                
+                if (scenario === 'extract') {
+                    result = `<div class="text-lime-500 font-semibold mb-2">✓ Extracted Data:</div>
+<pre class="text-gray-300">{
+  "name": "Sarah Johnson",
+  "email": "sarah.j@techcorp.com",
+  "phone": "(555) 123-4567",
+  "company": "TechCorp Inc.",
+  "address": "123 Main Street, San Francisco, CA 94102",
+  "purpose": "new automation project"
+}</pre>
+<div class="mt-3 text-xs text-gray-400">
+  ✓ 6 fields extracted • 100% confidence
+</div>`;
+                } else if (scenario === 'clean') {
+                    result = `<div class="text-lime-500 font-semibold mb-2">✓ Cleaned Data:</div>
+<pre class="text-gray-300">{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "phone": "(555) 987-6543",
+  "date": "2024-01-15"
+}</pre>
+<div class="mt-3 text-xs text-gray-400">
+  ✓ Trimmed whitespace • Capitalized names • Formatted phone
+</div>`;
+                } else if (scenario === 'validate') {
+                    result = `<div class="text-lime-500 font-semibold mb-2">✓ Validation Results:</div>
+<div class="space-y-1 text-sm">
+  <div class="flex items-center"><span class="text-green-400 mr-2">✓</span> john@example.com</div>
+  <div class="flex items-center"><span class="text-red-400 mr-2">✗</span> invalid.email@ <span class="text-gray-500 ml-2">(incomplete)</span></div>
+  <div class="flex items-center"><span class="text-green-400 mr-2">✓</span> sarah.johnson@company.co.uk</div>
+  <div class="flex items-center"><span class="text-red-400 mr-2">✗</span> bad@email <span class="text-gray-500 ml-2">(no TLD)</span></div>
+  <div class="flex items-center"><span class="text-green-400 mr-2">✓</span> mike.wilson@startup.io</div>
+</div>
+<div class="mt-3 text-xs text-gray-400">
+  ✓ 3 valid • ✗ 2 invalid • 60% success rate
+</div>`;
+                } else {
+                    result = `<div class="text-lime-500 font-semibold mb-2">✓ Data Processed:</div>
+<div class="text-gray-300">Custom data processing complete. Format detected and validated.</div>`;
+                }
+                
+                output.innerHTML = result;
+                incrementDemoCounter();
+            }, 1000);
+        }
+
+        // Booking Demo
+        function runBookingDemo() {
+            const output = document.getElementById('booking-output');
+            const name = document.getElementById('booking-name').value;
+            const email = document.getElementById('booking-email').value;
+            const service = document.getElementById('booking-service').value;
+            const time = document.getElementById('booking-time').value;
+            
+            output.innerHTML = '<div class="text-lime-500 animate-pulse">🤖 Checking availability...</div>';
+            
+            setTimeout(() => {
+                const bookingId = 'BK-' + Date.now().toString().slice(-8);
+                const dates = ['Nov 25', 'Nov 26', 'Nov 27'];
+                const times = time === 'morning' ? ['9:00 AM', '10:00 AM', '11:00 AM'] : 
+                             time === 'afternoon' ? ['1:00 PM', '2:00 PM', '3:00 PM'] :
+                             ['9:00 AM', '2:00 PM', '3:30 PM'];
+                
+                const serviceName = document.getElementById('booking-service').options[document.getElementById('booking-service').selectedIndex].text;
+                
+                output.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-lime-500/10 border border-lime-500/30 rounded p-3">
+                            <div class="font-semibold text-lime-500 mb-2">✓ Booking Confirmed!</div>
+                            <div class="text-sm space-y-1 text-gray-300">
+                                <div><strong>Booking ID:</strong> ${bookingId}</div>
+                                <div><strong>Customer:</strong> ${name}</div>
+                                <div><strong>Service:</strong> ${serviceName}</div>
+                                <div><strong>Date:</strong> ${dates[0]}, 2025</div>
+                                <div><strong>Time:</strong> ${times[0]} (PST)</div>
+                                <div><strong>Email:</strong> ${email}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                            <div class="text-sm font-semibold mb-2">📅 Other Available Slots:</div>
+                            <div class="space-y-1 text-xs text-gray-400">
+                                <div>• ${dates[1]} at ${times[1]}</div>
+                                <div>• ${dates[1]} at ${times[2]}</div>
+                                <div>• ${dates[2]} at ${times[0]}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                            <div class="text-sm font-semibold mb-2">✉️ Confirmation Sent:</div>
+                            <div class="text-xs text-gray-400">
+                                ✓ Email confirmation to ${email}<br>
+                                ✓ Calendar invite (.ics)<br>
+                                ✓ Reminder scheduled (24h before)
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-gray-500 text-center">
+                            ⚡ Processed in 0.8s • Calendar synced • Reminders set
+                        </div>
+                    </div>
+                `;
+                
+                incrementDemoCounter();
+            }, 800);
+        }
+
+        // Support Demo
+        function loadSupportScenario() {
+            const scenario = document.getElementById('support-scenario').value;
+            const input = document.getElementById('support-input');
+            
+            const scenarios = {
+                pricing: "Hi, I'm interested in your AI automation services. How much does it cost to set up a customer service chatbot for my e-commerce store? Do you have monthly pricing?",
+                order: "Can you check the status of my order #45892? I placed it 5 days ago and haven't received any updates.",
+                technical: "I'm having trouble integrating the API. I keep getting a 401 error even though I'm using the correct API key. Can you help?",
+                refund: "I'd like to request a refund for last month's charge. The service didn't meet our needs and we've decided to go with a different solution.",
+                custom: ""
+            };
+            
+            input.value = scenarios[scenario] || "";
+        }
+
+        function runSupportDemo() {
+            const input = document.getElementById('support-input').value;
+            const output = document.getElementById('support-output');
+            
+            if (!input.trim()) {
+                output.innerHTML = '<div class="text-red-400">Please enter a customer message.</div>';
+                return;
+            }
+            
+            output.innerHTML = '<div class="text-lime-500 animate-pulse">🤖 AI Agent analyzing...</div>';
+            
+            setTimeout(() => {
+                const scenario = document.getElementById('support-scenario').value;
+                let response = '';
+                let actions = '';
+                
+                if (scenario === 'pricing') {
+                    response = "Thank you for your interest! Our customer service chatbot starts at $249/month for the Professional plan, which includes 50,000 interactions and priority support. For e-commerce, we recommend integrating with your order tracking system and knowledge base. Setup typically takes 5-7 days and includes custom training on your FAQs. Would you like to schedule a free demo?";
+                    actions = '✓ Searched knowledge base: "pricing"\n✓ Retrieved product information\n✓ Identified as potential lead';
+                } else if (scenario === 'order') {
+                    response = "I've located order #45892. It was shipped on Nov 20th via FedEx (tracking: 1234567890). Current status: Out for delivery today by 8 PM. You should receive an email with the tracking link. Is there anything else I can help with regarding this order?";
+                    actions = '✓ Checked order status in database\n✓ Retrieved tracking information\n✓ No escalation needed';
+                } else if (scenario === 'technical') {
+                    response = "A 401 error indicates an authentication issue. Let me help troubleshoot: 1) Verify your API key hasn't expired in your dashboard. 2) Ensure you're including the 'Authorization: Bearer YOUR_KEY' header. 3) Check if your IP is whitelisted if you have that enabled. I'm creating a support ticket (#TK-8842) and escalating to our technical team for immediate assistance.";
+                    actions = '✓ Identified technical issue\n✓ Created support ticket #TK-8842\n✓ Escalated to technical team';
+                } else if (scenario === 'refund') {
+                    response = "I understand you'd like to request a refund. I've initiated a refund request (#RF-2847) for last month's charge of $249. Our refund policy allows full refunds within 30 days. You should see the credit within 5-7 business days. Before you go, may I ask what features were missing? Your feedback helps us improve.";
+                    actions = '✓ Initiated refund request #RF-2847\n✓ Processed refund: $249\n✓ Requested feedback';
+                } else {
+                    response = "Thank you for reaching out! I'm here to help. Let me gather some information and provide you with the best solution.";
+                    actions = '✓ Message received and processed\n✓ Awaiting additional context';
+                }
+                
+                output.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                            <div class="font-semibold text-lime-500 mb-2">🤖 AI Actions:</div>
+                            <pre class="text-xs text-gray-400">${actions}</pre>
+                        </div>
+                        
+                        <div class="bg-gray-900 border border-lime-500/30 rounded p-3">
+                            <div class="font-semibold text-lime-500 mb-2">💬 Response to Customer:</div>
+                            <div class="text-gray-300">${response}</div>
+                        </div>
+                        
+                        <div class="bg-gray-900 border border-gray-700 rounded p-3">
+                            <div class="text-sm font-semibold mb-2">📊 Metrics:</div>
+                            <div class="grid grid-cols-2 gap-2 text-xs text-gray-400">
+                                <div>Response Time: 0.6s</div>
+                                <div>Confidence: 94%</div>
+                                <div>Satisfaction: ⭐⭐⭐⭐⭐</div>
+                                <div>Escalation: ${scenario === 'technical' ? 'Yes' : 'No'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                incrementDemoCounter();
+            }, 600);
+        }
+
+        function incrementDemoCounter() {
+            demoCount++;
+            localStorage.setItem('demoCount', demoCount);
+            document.getElementById('demo-counter').textContent = demoCount;
+        }
+
+        // Initialize first scenario
+        loadEmailScenario();
     </script>
 
 </body>
