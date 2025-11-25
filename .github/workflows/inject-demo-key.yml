@@ -34,8 +34,7 @@ jobs:
         with:
           name: site-build
           path: |
-            index.html
-            config.js
+            build/**
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v20
@@ -43,4 +42,4 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           vercel-args: '--prod'
-          working-directory: ./
+          working-directory: ./build
