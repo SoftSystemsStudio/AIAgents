@@ -177,6 +177,27 @@ gtag('event', 'demo_to_consultation', {
 **Auto-Deploy**: Vercel will deploy automatically on push to main
 **Verification**: Check https://softsystemsstudio.com/#demo
 
+### Secure Demo Key (build-time)
+
+To protect the demo recording endpoint in production, you can inject a shared `DEMO_KEY` into the landing page at build time. The app will include this value as the `X-DEMO-KEY` header when the front-end records demo events.
+
+Usage (example):
+
+```bash
+# Locally: set the key for this build and run the build script
+DEMO_KEY="your-secret-demo-key" WEB3FORMS_ACCESS_KEY="<your-web3forms-key>" ./build.sh
+
+# The build script will update `index.html` meta tag and generate `config.js`.
+```
+
+Notes:
+- The build script calls `scripts/inject_demo_key.py` to safely insert the key into `<meta name="demo-key" content="...">`.
+- Keep `DEMO_KEY` secret (use your CI/CD secret manager or environment variable store in production).
+- On the server-side, set `DEMO_KEY` in the environment and the middleware will enforce presence of the header for `/api/v1/demo/record`.
+
+Note: The injector script is located at `scripts/inject_demo_key.py`. It replaces existing values or inserts the meta tag into the `<head>` if missing. The script is idempotent and safe to run in CI build steps.
+
+
 ## Code Structure
 
 ```
