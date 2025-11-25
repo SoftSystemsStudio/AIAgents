@@ -1,0 +1,11 @@
+{
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "doctype-first": "error",
+    "title-require": "warn",
+    "no-trailing-whitespace": "warn",
+    "attr-no-dup": "error",
+    "img-req-alt": "warn",
+    "a-req-href": "error"
+  }
+}
