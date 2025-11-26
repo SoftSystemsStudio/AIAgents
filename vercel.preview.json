@@ -1,0 +1,6 @@
+{
+  "buildCommand": "bash scripts/build_prototype.sh",
+  "outputDirectory": "build_prototype",
+  "cleanUrls": true,
+  "trailingSlash": false
+}
