@@ -1,0 +1,46 @@
+name: Site Smoke + A11y
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Build static site
+        run: |
+          bash build.sh
+
+      - name: Run lightweight smoke check
+        run: |
+          python3 tools/smoke_check.py
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run accessibility scan (pa11y)
+        run: |
+          # serve the built site and run pa11y against it
+          npx http-server build -p 8080 --silent &
+          PID=$!
+          # wait for server to be available
+          for i in {1..10}; do
+            if curl -sSf http://127.0.0.1:8080 >/dev/null; then break; fi
+            sleep 1
+          done
+          echo "Running pa11y against http://127.0.0.1:8080"
+          npx pa11y http://127.0.0.1:8080 || true
+          kill $PID || true
