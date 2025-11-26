@@ -24,6 +24,7 @@ jobs:
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25  # community action
         with:
+          zeit-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-args: --prod
           working-directory: .
