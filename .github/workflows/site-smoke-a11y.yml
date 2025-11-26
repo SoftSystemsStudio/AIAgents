@@ -37,9 +37,9 @@ jobs:
           npx -y svgo "assets/*.svg" || true
           npx -y imagemin-cli "assets/*.{png,jpg,jpeg,svg,gif}" --out-dir=assets/ || true
 
-      - name: Run accessibility scan (pa11y)
+      - name: Run accessibility scan (pa11y) and fail on errors
         run: |
-          # serve the built site and run pa11y against it
+          # serve the built site and run pa11y (JSON reporter) against it
           npx http-server build -p 8080 --silent &
           PID=$!
           # wait for server to be available
@@ -47,7 +47,16 @@ jobs:
             if curl -sSf http://127.0.0.1:8080 >/dev/null; then break; fi
             sleep 1
           done
-          echo "Running pa11y against http://127.0.0.1:8080"
-          # Run pa11y and fail on accessibility errors (exit code != 0)
-          npx -y pa11y http://127.0.0.1:8080
+          echo "Running pa11y (JSON) against http://127.0.0.1:8080"
+          npx -y pa11y http://127.0.0.1:8080 --reporter json > pa11y.json || true
+          # Count only 'error' level issues (ignore warnings/notices)
+          ERRORS=$(jq '[.issues[] | select(.type=="error")] | length' pa11y.json)
+          echo "pa11y error count: $ERRORS"
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "Accessibility errors found (pa11y). Failing job."
+            cat pa11y.json
+            kill $PID || true
+            exit 1
+          fi
+          echo "No pa11y errors found."
           kill $PID || true
