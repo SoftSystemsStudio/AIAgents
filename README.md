@@ -82,6 +82,23 @@ cp .env.example .env
 
 # Start infrastructure services
 make docker-up
+
+### Run the API with Docker Compose
+
+When you prefer containers, use the built-in image and compose targets:
+
+```bash
+# Build the API image (installs dependencies)
+docker compose build api
+
+# Bring up the API alongside Postgres, Redis, and Qdrant
+cp .env.example .env  # ensure secrets are present
+docker compose up api postgres redis qdrant
+
+# API will be available at http://localhost:8000
+# Override service hosts for containers by uncommenting the container-friendly
+# values at the bottom of .env.example before copying it.
+```
 ```
 
 ### Simple Agent Example
@@ -188,6 +205,11 @@ ANTHROPIC_API_KEY=sk-ant-...
 # Vector Database
 QDRANT_HOST=localhost
 QDRANT_PORT=6333
+QDRANT_USE_HTTPS=false
+
+# Optional
+QDRANT_API_KEY=
+QDRANT_TIMEOUT_SECONDS=10
 
 # Redis
 REDIS_HOST=localhost

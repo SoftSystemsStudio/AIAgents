@@ -27,6 +27,8 @@ Populate `.env` using these variables (added to `.env.example`):
   - Wire into notification modules (e.g., `RESEND_API_KEY` already present; prefer one provider to reduce surface area).
 - `SENTRY_DSN`
   - Connect Sentry SDK alongside existing OpenTelemetry/Prometheus hooks in `src/infrastructure/observability.py`.
+- `QDRANT_HOST`, `QDRANT_PORT`, `QDRANT_USE_HTTPS`, `QDRANT_API_KEY`, `QDRANT_TIMEOUT_SECONDS`
+  - Point to self-hosted Qdrant (via `docker-compose`) or a managed endpoint. Health checks hit `/healthz`, so keep the host/port reachable from the API container.
 
 ## Deployment blueprint
 

@@ -5,6 +5,7 @@ You already populated `.env` with the Supabase, Upstash Redis, Sentry, SendGrid,
 ## 1) Wire the backend to your managed services
 - **Database (Supabase Postgres):**
   - Set `DATABASE_URL` to the Supabase connection string (overrides host/port/user/pass). Keep `DATABASE_POOL_SIZE` modest (e.g., 5–10) for free-tier limits.
+  - The API will automatically prefer PostgreSQL persistence at startup; if connection fails it logs the error and falls back to the in-memory repository so health and boot still work.
   - Run migrations if present: `alembic upgrade head` (or `make migrate` if you add a target) after installing deps.
 - **Cache/Queue (Upstash Redis):**
   - Map the Upstash endpoint into existing Redis fields: `REDIS_HOST=<your-upstash-host>`, `REDIS_PORT=<port>`, `REDIS_PASSWORD=<token>`. For a `rediss://` URL, you can parse host/port/token from the URL or set `REDIS_URL` if you introduce it in config.
@@ -20,6 +21,11 @@ You already populated `.env` with the Supabase, Upstash Redis, Sentry, SendGrid,
 1. Install deps: `make install-dev`.
 2. Copy env: `cp .env.example .env` (already filled by you) and export with `set -a; source .env; set +a`.
 3. Run local infra if you want self-hosted services instead of the cloud: `make docker-up` (brings Postgres, Redis, Qdrant, Prometheus, Jaeger).
+   - If you want everything containerized, use `docker compose up api postgres redis qdrant` (after `docker compose build api`).
+   - Use the container-friendly host overrides in `.env.example` (`postgres`, `redis`, `qdrant`) when running via Compose.
+4. Start the API for a smoke test: `uvicorn src.api.rest:app --reload --host 0.0.0.0 --port 8000` (or rely on the Compose-managed `api` service).
+5. Check health/metrics:
+   - `curl http://localhost:8000/health` (expects `"status": "healthy"` and shows Supabase/Redis/Postgres/Qdrant availability).
 4. Start the API for a smoke test: `uvicorn src.api.rest:app --reload --host 0.0.0.0 --port 8000`.
 5. Check health/metrics:
    - `curl http://localhost:8000/health` (expects `"status": "healthy"` and shows Supabase/Redis availability).
@@ -31,6 +37,12 @@ You already populated `.env` with the Supabase, Upstash Redis, Sentry, SendGrid,
   - Add environment variables from `.env` (Database, Supabase, Upstash, LLM keys, Sentry, email provider).
   - Attach Supabase Postgres via `DATABASE_URL`; keep autoscaling enabled.
 - **Supabase:**
+  - Enable Auth providers and copy `SUPABASE_JWT_SECRET` into `.env`; the backend now instantiates a Supabase client when URL + service role key are set so you can reuse Storage/Auth/Database from server code.
+  - Create Storage bucket(s) with RLS policies tied to auth user IDs.
+- **Upstash Redis:**
+  - Copy REST credentials to `.env`; if using direct Redis protocol, allowlisted regions match your Render region.
+- **Qdrant (vector store):**
+  - If using Render or another host, set `QDRANT_HOST`, `QDRANT_PORT`, optional `QDRANT_API_KEY`, and `QDRANT_USE_HTTPS` so the `/health` endpoint can report its status. Keep Qdrant reachable from the API container or service.
   - Enable Auth providers and copy `SUPABASE_JWT_SECRET` into `.env` for backend JWT verification middleware you add later.
   - Create Storage bucket(s) with RLS policies tied to auth user IDs.
 - **Upstash Redis:**

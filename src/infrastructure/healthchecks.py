@@ -44,3 +44,41 @@ async def check_redis_health(redis_client: Optional[Any]) -> Dict[str, Any]:
         return {"status": "healthy" if ping_result else "degraded"}
     except Exception as exc:  # pragma: no cover - defensive logging only
         return {"status": "unreachable", "error": str(exc)}
+
+
+async def check_database_health(engine: Optional[Any]) -> Dict[str, Any]:
+    """Execute a lightweight database ping."""
+
+    if engine is None:
+        return {"status": "disabled"}
+
+    try:
+        from sqlalchemy import text
+
+        async with engine.connect() as connection:
+            result = await connection.execute(text("SELECT 1"))
+            scalar = result.scalar()
+        return {"status": "healthy" if scalar == 1 else "degraded"}
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        return {"status": "unreachable", "error": str(exc)}
+
+
+async def check_qdrant_health(
+    base_url: Optional[str], api_key: Optional[str] = None, timeout: float = 5.0
+) -> Dict[str, Any]:
+    """Check the Qdrant health endpoint defensively."""
+
+    if not base_url:
+        return {"status": "disabled"}
+
+    headers = {"api-key": api_key} if api_key else None
+    health_url = f"{base_url.rstrip('/')}/healthz"
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(health_url, headers=headers)
+            if response.status_code == 200:
+                return {"status": "healthy"}
+            return {"status": "degraded", "http_status": response.status_code}
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        return {"status": "unreachable", "error": str(exc)}

@@ -35,6 +35,9 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",  # JWT tokens
     "passlib[bcrypt]>=1.7.4",            # Password hashing
     "python-multipart>=0.0.6",           # Form data parsing
+    "sqlalchemy[asyncio]>=2.0.0",        # PostgreSQL persistence
+    "asyncpg>=0.29.0",                   # Async Postgres driver
+    "supabase>=2.4.0",                   # Supabase client for auth/storage
 ]
 
 [project.optional-dependencies]

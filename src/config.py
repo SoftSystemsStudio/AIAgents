@@ -28,10 +28,14 @@ class LLMProviderConfig(BaseSettings):
 
 class VectorStoreConfig(BaseSettings):
     """Configuration for vector databases."""
-    
+
     qdrant_host: str = Field("localhost", description="Qdrant host")
     qdrant_port: int = Field(6333, description="Qdrant port")
     qdrant_api_key: Optional[str] = Field(None, description="Qdrant API key")
+    qdrant_use_https: bool = Field(False, description="Use HTTPS when connecting to Qdrant")
+    qdrant_timeout_seconds: float = Field(
+        10.0, description="Request timeout when talking to Qdrant"
+    )
     
     chroma_persist_dir: Optional[str] = Field(None, description="ChromaDB persist directory")
     
@@ -336,6 +340,9 @@ def get_config() -> AppConfig:
             redis=RedisConfig(),
             database=DatabaseConfig(),
             observability=ObservabilityConfig(),
+            supabase=SupabaseConfig(),
+            email=EmailConfig(),
+            auth=AuthConfig(),
             agent=AgentConfig(),
             rate_limit=RateLimitConfig(),
         )

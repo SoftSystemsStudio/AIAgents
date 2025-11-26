@@ -36,10 +36,15 @@ from src.application.use_cases import (
 )
 from src.api.auth import SupabaseUser, get_supabase_user
 from src.infrastructure.healthchecks import (
+    check_database_health,
+    check_qdrant_health,
     check_redis_health,
     check_supabase_health,
 )
 from src.infrastructure.message_queue import RedisMessageQueue
+from src.infrastructure.qdrant_client import init_qdrant_vector_store
+from src.infrastructure.supabase_client import init_supabase_client
+from src.infrastructure.db_repositories import PostgreSQLAgentRepository
 
 # Import Gmail cleanup router
 from src.api.routers.gmail_cleanup import router as gmail_cleanup_router
@@ -88,9 +93,31 @@ async def lifespan(app: FastAPI):
         raise ValueError("No LLM provider API key configured")
     
     # Initialize repositories
-    agent_repo = InMemoryAgentRepository()
     tool_registry = InMemoryToolRegistry()
-    
+
+    # Prefer PostgreSQL persistence when configured; fall back to in-memory
+    agent_repo = InMemoryAgentRepository()
+    db_repo = None
+    try:
+        db_repo = PostgreSQLAgentRepository(
+            database_url=config.database.get_url(),
+            pool_size=config.database.database_pool_size,
+            max_overflow=config.database.database_max_overflow,
+        )
+        await db_repo.initialize()
+        agent_repo = db_repo
+        observability.log(
+            "info",
+            "PostgreSQL agent repository initialized",
+            {"pool_size": config.database.database_pool_size},
+        )
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        observability.log(
+            "warning",
+            "Falling back to in-memory agent repository",
+            {"error": str(exc)},
+        )
+
     # Create orchestrator
     orchestrator = AgentOrchestrator(
         llm_provider=llm_provider,
@@ -112,6 +139,25 @@ async def lifespan(app: FastAPI):
         )
     
     # Store in global dependencies
+    supabase = init_supabase_client(config.supabase)
+    qdrant_vector_store = None
+    try:
+        qdrant_vector_store = init_qdrant_vector_store(config.vector_store)
+        if qdrant_vector_store:
+            observability.log(
+                "info",
+                "Qdrant vector store initialized",
+                {
+                    "host": config.vector_store.qdrant_host,
+                    "port": config.vector_store.qdrant_port,
+                    "https": config.vector_store.qdrant_use_https,
+                },
+            )
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        observability.log(
+            "warning", "Qdrant vector store unavailable", {"error": str(exc)}
+        )
+
     _dependencies.update({
         "config": config,
         "observability": observability,
@@ -120,6 +166,9 @@ async def lifespan(app: FastAPI):
         "tool_registry": tool_registry,
         "orchestrator": orchestrator,
         "message_queue": message_queue,
+        "database_repo": db_repo,
+        "supabase": supabase,
+        "vector_store": qdrant_vector_store,
     })
     
     observability.log("info", "API server initialized successfully")
@@ -238,6 +287,17 @@ async def root():
     }
 
 
+def _qdrant_base_url() -> Optional[str]:
+    """Compose the Qdrant base URL from configuration."""
+
+    config = _dependencies["config"]
+    if not config.vector_store.qdrant_host:
+        return None
+
+    scheme = "https" if config.vector_store.qdrant_use_https else "http"
+    return f"{scheme}://{config.vector_store.qdrant_host}:{config.vector_store.qdrant_port}"
+
+
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
     """
@@ -248,12 +308,25 @@ async def health_check():
     config = _dependencies["config"]
     observability = _dependencies["observability"]
     message_queue = _dependencies.get("message_queue")
+    database_repo = _dependencies.get("database_repo")
+    qdrant_base_url = _qdrant_base_url()
+
     
     # Check observability health
     obs_health = await observability.health_check()
     redis_health = await check_redis_health(
         message_queue.redis if message_queue else None
     )
+    database_health = await check_database_health(
+        database_repo.engine if database_repo else None
+    )
+    supabase_health = await check_supabase_health(config.supabase.supabase_url)
+    qdrant_health = await check_qdrant_health(
+        qdrant_base_url,
+        api_key=config.vector_store.qdrant_api_key,
+        timeout=config.vector_store.qdrant_timeout_seconds,
+    )
+
     supabase_health = await check_supabase_health(config.supabase.supabase_url)
     
     return HealthResponse(
@@ -264,6 +337,10 @@ async def health_check():
             "observability": obs_health,
             "llm_provider": "operational",
             "agent_repository": "operational",
+            "database": database_health,
+            "redis": redis_health,
+            "supabase": supabase_health,
+            "qdrant": qdrant_health,
             "redis": redis_health,
             "supabase": supabase_health,
         },
