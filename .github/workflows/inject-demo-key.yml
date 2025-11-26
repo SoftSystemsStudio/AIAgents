@@ -1,10 +1,11 @@
+---
 name: Build (inject DEMO_KEY)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
@@ -52,7 +53,7 @@ jobs:
           fi
 
           # Extract the content value
-          val=$(sed -n 's/.*<meta name="demo-key" content="\([^"]*\)".*/\1/p' build/index.html || true)
+          val=$(sed -n 's/.*<meta name="demo-key" content="\([^\"]*\)".*/\1/p' build/index.html || true)
           if [ -z "$val" ]; then
             echo "demo-key meta content is empty" >&2
             exit 1
@@ -131,7 +132,7 @@ jobs:
 
       - name: Deploy to Vercel (Production)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: amondnet/vercel-action@v20
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}

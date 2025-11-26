@@ -1,13 +1,18 @@
+---
 name: Deploy to Vercel
+
+# Note: set the following repository secrets in GitHub:
+# - VERCEL_TOKEN (personal token)
+# - VERCEL_ORG_ID
+# - VERCEL_PROJECT_ID
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   vercel-deploy:
     runs-on: ubuntu-latest
-    if: ${{ secrets.VERCEL_TOKEN && secrets.VERCEL_PROJECT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,7 +22,7 @@ jobs:
           bash build.sh
 
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20 # community action
+        uses: amondnet/vercel-action@v25  # community action
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-args: --prod
@@ -25,8 +30,3 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-    # Note: set the following repository secrets in GitHub:
-    # - VERCEL_TOKEN (personal token)
-    # - VERCEL_ORG_ID
-    # - VERCEL_PROJECT_ID
