@@ -5,7 +5,7 @@ Provides clean interface to Gmail API, returning domain entities
 instead of raw API responses. Implements IGmailClient interface.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 from datetime import datetime
 import contextlib
 import importlib.util
@@ -78,10 +78,15 @@ class GmailClient(IGmailClient):
 
         self.credentials_path = credentials_path
         self.token_path = token_path
-        self.service = None
+        self.service: Any = None
         self._authenticate()
+
+    def _ensure_service(self) -> None:
+        """Ensure the Gmail `service` is available and authenticated."""
+        if self.service is None:
+            raise RuntimeError("Gmail service not authenticated. Initialize the client first.")
     
-    def _authenticate(self):
+    def _authenticate(self) -> None:
         """Authenticate with Gmail API using OAuth2."""
         creds = None
         
@@ -256,7 +261,7 @@ class GmailClient(IGmailClient):
             List of EmailMessage domain entities
         """
         try:
-            all_messages = []
+            all_messages: List[EmailMessage] = []
             page_token = None
             
             while True:
@@ -359,7 +364,8 @@ class GmailClient(IGmailClient):
     def list_threads(
         self,
         query: str = '',
-        max_results: Optional[int] = None,
+        max_results: int = 100,
+        label_ids: Optional[List[str]] = None,
     ) -> List[EmailThread]:
         """
         List threads matching query.
@@ -372,7 +378,7 @@ class GmailClient(IGmailClient):
             List of EmailThread domain entities
         """
         try:
-            all_threads = []
+            all_threads: List[EmailThread] = []
             page_token = None
             
             while True:
@@ -403,7 +409,7 @@ class GmailClient(IGmailClient):
         except Exception as e:
             raise Exception(f"Failed to list threads: {str(e)}")
     
-    def trash_message(self, message_id: str) -> None:
+    def trash_message(self, message_id: str) -> bool:
         """
         Move message to trash.
         
@@ -415,6 +421,7 @@ class GmailClient(IGmailClient):
                 userId='me',
                 id=message_id,
             ).execute()
+            return True
         except Exception as e:
             raise Exception(f"Failed to trash message {message_id}: {str(e)}")
     
@@ -442,7 +449,7 @@ class GmailClient(IGmailClient):
         message_id: str,
         add_labels: Optional[List[str]] = None,
         remove_labels: Optional[List[str]] = None,
-    ) -> None:
+    ) -> bool:
         """
         Modify message labels.
         
@@ -460,8 +467,18 @@ class GmailClient(IGmailClient):
                     'removeLabelIds': remove_labels or [],
                 },
             ).execute()
+            return True
         except Exception as e:
             raise Exception(f"Failed to modify message {message_id}: {str(e)}")
+
+    def modify_message(
+        self,
+        message_id: str,
+        add_labels: Optional[List[str]] = None,
+        remove_labels: Optional[List[str]] = None,
+    ) -> bool:
+        """Backward-compatible alias used by tools layer."""
+        return self.modify_labels(message_id, add_labels=add_labels, remove_labels=remove_labels)
     
     def archive_message(self, message_id: str) -> None:
         """
@@ -585,6 +602,11 @@ class GmailClient(IGmailClient):
                 results['failed'] += 1
         
         return results
+
+    def batch_delete(self, message_ids: List[str]) -> Dict[str, Any]:
+        """Alias to `batch_trash_messages` to satisfy domain interface."""
+        results = self.batch_trash_messages(message_ids)
+        return cast(Dict[str, Any], results)
     
     def batch_mark_read(self, message_ids: List[str]) -> Dict[str, int]:
         """
@@ -597,3 +619,33 @@ class GmailClient(IGmailClient):
             Dict with 'success' and 'failed' counts
         """
         return self.batch_modify_messages(message_ids, remove_labels=['UNREAD'])
+
+    def get_labels(self) -> List[Dict[str, Any]]:
+        """Return list of labels available in the user's mailbox."""
+        try:
+            self._ensure_service()
+            results = cast(Any, self.service).users().labels().list(userId='me').execute()
+            labels = cast(List[Dict[str, Any]], results.get('labels', []))
+            return labels
+        except Exception as e:
+            raise Exception(f"Failed to get labels: {str(e)}")
+
+    def create_label(self, name: str) -> str:
+        """Create a new label and return its id."""
+        try:
+            self._ensure_service()
+            body = {"name": name}
+            res = cast(Any, self.service).users().labels().create(userId='me', body=body).execute()
+            label_id = cast(str, res.get('id', ''))
+            return label_id
+        except Exception as e:
+            raise Exception(f"Failed to create label '{name}': {str(e)}")
+
+    def get_profile(self) -> Dict[str, Any]:
+        """Return the user's Gmail profile information."""
+        try:
+            self._ensure_service()
+            profile = cast(Any, self.service).users().getProfile(userId='me').execute()
+            return cast(Dict[str, Any], profile)
+        except Exception as e:
+            raise Exception(f"Failed to get profile: {str(e)}")

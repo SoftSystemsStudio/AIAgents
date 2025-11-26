@@ -219,6 +219,40 @@ class IGmailClient(ABC):
         """
         pass
 
+    @abstractmethod
+    def list_messages(
+        self,
+        query: str = '',
+        max_results: int = 100,
+        label_ids: Optional[List[str]] = None,
+    ) -> List[EmailMessage]:
+        """
+        List message metadata matching query.
+
+        Returns list of raw message dicts or domain-compatible dicts used by tools.
+        """
+        pass
+
+    @abstractmethod
+    def count_messages(self, query: str = '', max_count: int = 10000) -> int:
+        """Count messages matching a query (fast estimation or paginated count)."""
+        pass
+
+    @abstractmethod
+    def modify_message(
+        self,
+        message_id: str,
+        add_labels: Optional[List[str]] = None,
+        remove_labels: Optional[List[str]] = None,
+    ) -> bool:
+        """Modify labels on a single message (compat shim). Returns True on success."""
+        pass
+
+    @abstractmethod
+    def batch_delete(self, message_ids: List[str]) -> Dict[str, Any]:
+        """Batch delete (or trash) messages. Returns summary dict (e.g., {'success': n, 'failed': m})."""
+        pass
+
 
 class IGmailCleanupRepository(ABC):
     """

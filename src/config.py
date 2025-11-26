@@ -12,12 +12,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class LLMProviderConfig(BaseSettings):
     """Configuration for LLM providers."""
-    
+
     openai_api_key: Optional[str] = Field(None, description="OpenAI API key")
     openai_organization: Optional[str] = Field(None, description="OpenAI organization ID")
-    
+
     anthropic_api_key: Optional[str] = Field(None, description="Anthropic API key")
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -36,9 +36,9 @@ class VectorStoreConfig(BaseSettings):
     qdrant_timeout_seconds: float = Field(
         10.0, description="Request timeout when talking to Qdrant"
     )
-    
+
     chroma_persist_dir: Optional[str] = Field(None, description="ChromaDB persist directory")
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -51,7 +51,8 @@ class RedisConfig(BaseSettings):
     """Configuration for Redis."""
 
     redis_url: Optional[str] = Field(
-        None, description="Full Redis URL (supports rediss:// for Upstash)",
+        None,
+        description="Full Redis URL (supports rediss:// for Upstash)",
     )
     redis_host: str = Field("localhost", description="Redis host")
     redis_port: int = Field(6379, description="Redis port")
@@ -89,10 +90,9 @@ class RedisConfig(BaseSettings):
 
 class DatabaseConfig(BaseSettings):
     """Configuration for PostgreSQL database."""
-    
+
     database_url: Optional[str] = Field(
-        None,
-        description="Full PostgreSQL connection URL (overrides individual fields)"
+        None, description="Full PostgreSQL connection URL (overrides individual fields)"
     )
     database_host: str = Field("localhost", description="Database host")
     database_port: int = Field(5432, description="Database port")
@@ -101,19 +101,19 @@ class DatabaseConfig(BaseSettings):
     database_password: Optional[str] = Field(None, description="Database password")
     database_pool_size: int = Field(10, description="Connection pool size")
     database_max_overflow: int = Field(20, description="Max connections above pool size")
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
-    
+
     def get_url(self) -> str:
         """Get database URL (full URL or build from components)."""
         if self.database_url:
             return self.database_url
-        
+
         password_part = f":{self.database_password}" if self.database_password else ""
         return (
             f"postgresql+asyncpg://"
@@ -133,10 +133,12 @@ class ObservabilityConfig(BaseSettings):
         description="OpenTelemetry exporter endpoint",
     )
     sentry_dsn: Optional[str] = Field(
-        None, description="Sentry DSN for error reporting",
+        None,
+        description="Sentry DSN for error reporting",
     )
     sentry_environment: Optional[str] = Field(
-        None, description="Sentry environment tag (e.g., production)",
+        None,
+        description="Sentry environment tag (e.g., production)",
     )
     sentry_traces_sample_rate: float = Field(
         0.05,
@@ -146,7 +148,7 @@ class ObservabilityConfig(BaseSettings):
     )
     enable_metrics: bool = Field(True, description="Enable Prometheus metrics")
     metrics_port: int = Field(9090, description="Metrics server port")
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -157,7 +159,7 @@ class ObservabilityConfig(BaseSettings):
 
 class AgentConfig(BaseSettings):
     """Configuration for agent execution."""
-    
+
     default_agent_timeout: int = Field(
         300,
         description="Default agent timeout in seconds",
@@ -170,7 +172,7 @@ class AgentConfig(BaseSettings):
         512,
         description="Memory limit per agent execution",
     )
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -184,11 +186,13 @@ class SupabaseConfig(BaseSettings):
 
     supabase_url: Optional[str] = Field(None, description="Supabase project URL")
     supabase_service_role_key: Optional[str] = Field(
-        None, description="Supabase service role key",
+        None,
+        description="Supabase service role key",
     )
     supabase_anon_key: Optional[str] = Field(None, description="Supabase anon key")
     supabase_jwt_secret: Optional[str] = Field(
-        None, description="Supabase JWT secret for server-side verification",
+        None,
+        description="Supabase JWT secret for server-side verification",
     )
 
     model_config = SettingsConfigDict(
@@ -223,7 +227,8 @@ class AuthConfig(BaseSettings):
     )
     jwt_algorithm: str = Field("HS256", description="JWT signing algorithm")
     access_token_expire_minutes: int = Field(
-        60 * 24, description="Access token expiry in minutes",
+        60 * 24,
+        description="Access token expiry in minutes",
     )
     supabase_jwt_secret: Optional[str] = Field(
         None,
@@ -243,7 +248,7 @@ class AuthConfig(BaseSettings):
 
 class RateLimitConfig(BaseSettings):
     """Configuration for rate limiting."""
-    
+
     max_requests_per_minute: int = Field(
         60,
         description="Max API requests per minute",
@@ -252,7 +257,7 @@ class RateLimitConfig(BaseSettings):
         4000,
         description="Max tokens per LLM request",
     )
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -264,52 +269,50 @@ class RateLimitConfig(BaseSettings):
 class AppConfig(BaseSettings):
     """
     Main application configuration.
-    
+
     Aggregates all configuration sections and provides validation.
     """
-    
+
     app_env: str = Field("development", description="Application environment")
     app_name: str = Field("aiagents", description="Application name")
-    
+
     # Sub-configurations
-    llm: LLMProviderConfig = Field(default_factory=LLMProviderConfig)
-    vector_store: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
-    redis: RedisConfig = Field(default_factory=RedisConfig)
-    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
-    observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
-    supabase: SupabaseConfig = Field(default_factory=SupabaseConfig)
-    email: EmailConfig = Field(default_factory=EmailConfig)
-    auth: AuthConfig = Field(default_factory=AuthConfig)
-    agent: AgentConfig = Field(default_factory=AgentConfig)
-    rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
-    
+    llm: LLMProviderConfig = Field(default_factory=LLMProviderConfig)  # type: ignore[arg-type]
+    vector_store: VectorStoreConfig = Field(default_factory=VectorStoreConfig)  # type: ignore[arg-type]
+    redis: RedisConfig = Field(default_factory=RedisConfig)  # type: ignore[arg-type]
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)  # type: ignore[arg-type]
+    observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)  # type: ignore[arg-type]
+    supabase: SupabaseConfig = Field(default_factory=SupabaseConfig)  # type: ignore[arg-type]
+    email: EmailConfig = Field(default_factory=EmailConfig)  # type: ignore[arg-type]
+    auth: AuthConfig = Field(default_factory=AuthConfig)  # type: ignore[arg-type]
+    agent: AgentConfig = Field(default_factory=AgentConfig)  # type: ignore[arg-type]
+    rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)  # type: ignore[arg-type]
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
-    
+
     def is_production(self) -> bool:
         """Check if running in production."""
         return self.app_env.lower() == "production"
-    
+
     def is_development(self) -> bool:
         """Check if running in development."""
         return self.app_env.lower() == "development"
-    
+
     def validate_required_config(self) -> None:
         """
         Validate that required configuration is present.
-        
+
         Raises ValueError if critical config is missing in production.
         """
         if self.is_production():
             # In production, require at least one LLM provider
             if not self.llm.openai_api_key and not self.llm.anthropic_api_key:
-                raise ValueError(
-                    "Production requires at least one LLM provider API key"
-                )
+                raise ValueError("Production requires at least one LLM provider API key")
 
             # Require observability in production
             if not self.observability.enable_metrics:
@@ -329,22 +332,11 @@ _config: Optional[AppConfig] = None
 def get_config() -> AppConfig:
     """
     Get application configuration (singleton pattern).
-    
+
     Loads config from environment variables and .env file.
     """
     global _config
     if _config is None:
-        _config = AppConfig(
-            llm=LLMProviderConfig(),
-            vector_store=VectorStoreConfig(),
-            redis=RedisConfig(),
-            database=DatabaseConfig(),
-            observability=ObservabilityConfig(),
-            supabase=SupabaseConfig(),
-            email=EmailConfig(),
-            auth=AuthConfig(),
-            agent=AgentConfig(),
-            rate_limit=RateLimitConfig(),
-        )
+        _config = AppConfig()  # type: ignore[call-arg]
         _config.validate_required_config()
     return _config

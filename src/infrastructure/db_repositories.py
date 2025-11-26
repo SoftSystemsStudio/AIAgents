@@ -6,98 +6,102 @@ Uses SQLAlchemy for ORM and async database operations.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from uuid import UUID
 
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text, JSON, Boolean, ForeignKey, Index
+from sqlalchemy import String, Integer, Float, DateTime, Text, JSON, Boolean, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 
 from src.domain.interfaces import IAgentRepository
 from src.domain.models import Agent, AgentCapability, AgentStatus, Message, MessageRole
 from src.domain.exceptions import AgentNotFoundError
 
-# SQLAlchemy Base
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class AgentModel(Base):
     """SQLAlchemy model for Agent table."""
-    
+
     __tablename__ = "agents"
-    
-    id = Column(PGUUID(as_uuid=True), primary_key=True)
-    name = Column(String(255), nullable=False, unique=True, index=True)
-    description = Column(Text)
-    system_prompt = Column(Text, nullable=False)
-    model_provider = Column(String(50), nullable=False)
-    model_name = Column(String(100), nullable=False)
-    temperature = Column(Float, default=0.7)
-    max_tokens = Column(Integer, default=4000)
-    status = Column(String(20), default="idle", index=True)
-    capabilities = Column(JSON, default=list)
-    allowed_tools = Column(JSON, default=list)
-    max_iterations = Column(Integer, default=10)
-    timeout_seconds = Column(Integer, default=300)
-    created_at = Column(DateTime, nullable=False)
-    updated_at = Column(DateTime, nullable=False)
-    
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    model_provider: Mapped[str] = mapped_column(String(50), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    temperature: Mapped[float] = mapped_column(Float, default=0.7)
+    max_tokens: Mapped[int] = mapped_column(Integer, default=4000)
+    status: Mapped[str] = mapped_column(String(20), default="idle", index=True)
+    capabilities: Mapped[list] = mapped_column(JSON, default=list)
+    allowed_tools: Mapped[list] = mapped_column(JSON, default=list)
+    max_iterations: Mapped[int] = mapped_column(Integer, default=10)
+    timeout_seconds: Mapped[int] = mapped_column(Integer, default=300)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
     # Relationships
-    messages = relationship("MessageModel", back_populates="agent", cascade="all, delete-orphan")
-    
+    messages: Mapped[list["MessageModel"]] = relationship(
+        "MessageModel", back_populates="agent", cascade="all, delete-orphan"
+    )
+
     # Indexes for common queries
     __table_args__ = (
-        Index('idx_agent_status_created', 'status', 'created_at'),
-        Index('idx_agent_provider_model', 'model_provider', 'model_name'),
+        Index("idx_agent_status_created", "status", "created_at"),
+        Index("idx_agent_provider_model", "model_provider", "model_name"),
     )
 
 
 class MessageModel(Base):
     """SQLAlchemy model for Message table."""
-    
+
     __tablename__ = "messages"
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    agent_id = Column(PGUUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False)
-    role = Column(String(20), nullable=False)
-    content = Column(Text, nullable=False)
-    tool_calls = Column(JSON)
-    tool_call_id = Column(String(255))
-    metadata = Column(JSON, default=dict)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agent_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("agents.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    tool_calls: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    tool_call_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    metadata_json: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
     # Relationships
-    agent = relationship("AgentModel", back_populates="messages")
-    
+    agent: Mapped[AgentModel] = relationship("AgentModel", back_populates="messages")
+
     # Indexes
     __table_args__ = (
-        Index('idx_message_agent_created', 'agent_id', 'created_at'),
-        Index('idx_message_role', 'role'),
+        Index("idx_message_agent_created", "agent_id", "created_at"),
+        Index("idx_message_role", "role"),
     )
 
 
 class PostgreSQLAgentRepository(IAgentRepository):
     """
     PostgreSQL implementation of agent repository.
-    
+
     Provides production-ready persistence with:
     - Async database operations
     - Transaction management
     - Connection pooling
     - Conversation history storage
     - Efficient indexing
-    
+
     RISK: Database can become bottleneck at scale.
     Mitigation: Connection pooling, indexes, read replicas.
     """
-    
+
     def __init__(self, database_url: str, pool_size: int = 10, max_overflow: int = 20):
         """
         Initialize PostgreSQL repository.
-        
+
         Args:
             database_url: PostgreSQL connection string (async format)
                 Example: "postgresql+asyncpg://user:pass@localhost/dbname"
@@ -116,26 +120,24 @@ class PostgreSQLAgentRepository(IAgentRepository):
             class_=AsyncSession,
             expire_on_commit=False,
         )
-    
+
     async def initialize(self):
         """Create database tables if they don't exist."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-    
+
     async def save(self, agent: Agent) -> None:
         """
         Persist an agent and its conversation history.
-        
+
         If agent exists, updates it. Otherwise, creates new record.
         """
         async with self.async_session() as session:
             async with session.begin():
                 # Check if agent exists
-                result = await session.execute(
-                    select(AgentModel).where(AgentModel.id == agent.id)
-                )
+                result = await session.execute(select(AgentModel).where(AgentModel.id == agent.id))
                 existing = result.scalar_one_or_none()
-                
+
                 if existing:
                     # Update existing agent
                     existing.name = agent.name
@@ -151,14 +153,14 @@ class PostgreSQLAgentRepository(IAgentRepository):
                     existing.max_iterations = agent.max_iterations
                     existing.timeout_seconds = agent.timeout_seconds
                     existing.updated_at = agent.updated_at
-                    
+
                     # Delete old messages and add new ones
                     await session.execute(
                         select(MessageModel).where(MessageModel.agent_id == agent.id)
                     )
                     for msg_model in existing.messages:
                         await session.delete(msg_model)
-                    
+
                     # Add current messages
                     for msg in agent.conversation_history:
                         msg_model = MessageModel(
@@ -191,7 +193,7 @@ class PostgreSQLAgentRepository(IAgentRepository):
                         updated_at=agent.updated_at,
                     )
                     session.add(agent_model)
-                    
+
                     # Add messages
                     for msg in agent.conversation_history:
                         msg_model = MessageModel(
@@ -204,20 +206,18 @@ class PostgreSQLAgentRepository(IAgentRepository):
                             created_at=datetime.utcnow(),
                         )
                         session.add(msg_model)
-                
+
                 await session.commit()
-    
+
     async def get_by_id(self, agent_id: UUID) -> Optional[Agent]:
         """Retrieve an agent by ID with conversation history."""
         async with self.async_session() as session:
-            result = await session.execute(
-                select(AgentModel).where(AgentModel.id == agent_id)
-            )
+            result = await session.execute(select(AgentModel).where(AgentModel.id == agent_id))
             agent_model = result.scalar_one_or_none()
-            
+
             if not agent_model:
                 return None
-            
+
             # Load messages
             msg_result = await session.execute(
                 select(MessageModel)
@@ -225,20 +225,18 @@ class PostgreSQLAgentRepository(IAgentRepository):
                 .order_by(MessageModel.created_at)
             )
             message_models = msg_result.scalars().all()
-            
+
             return self._model_to_domain(agent_model, message_models)
-    
+
     async def get_by_name(self, name: str) -> Optional[Agent]:
         """Retrieve an agent by name."""
         async with self.async_session() as session:
-            result = await session.execute(
-                select(AgentModel).where(AgentModel.name == name)
-            )
+            result = await session.execute(select(AgentModel).where(AgentModel.name == name))
             agent_model = result.scalar_one_or_none()
-            
+
             if not agent_model:
                 return None
-            
+
             # Load messages
             msg_result = await session.execute(
                 select(MessageModel)
@@ -246,13 +244,13 @@ class PostgreSQLAgentRepository(IAgentRepository):
                 .order_by(MessageModel.created_at)
             )
             message_models = msg_result.scalars().all()
-            
+
             return self._model_to_domain(agent_model, message_models)
-    
+
     async def list_all(self, limit: int = 100, offset: int = 0) -> List[Agent]:
         """
         List all agents with pagination.
-        
+
         Note: Does not load conversation history for performance.
         Use get_by_id to load full agent with history.
         """
@@ -264,47 +262,43 @@ class PostgreSQLAgentRepository(IAgentRepository):
                 .offset(offset)
             )
             agent_models = result.scalars().all()
-            
+
             # Return agents without conversation history (performance)
             return [self._model_to_domain(model, []) for model in agent_models]
-    
+
     async def delete(self, agent_id: UUID) -> None:
         """Delete an agent and all associated messages (cascade)."""
         async with self.async_session() as session:
             async with session.begin():
-                result = await session.execute(
-                    select(AgentModel).where(AgentModel.id == agent_id)
-                )
+                result = await session.execute(select(AgentModel).where(AgentModel.id == agent_id))
                 agent_model = result.scalar_one_or_none()
-                
+
                 if agent_model:
                     await session.delete(agent_model)
                     await session.commit()
-    
+
     async def update_status(self, agent_id: UUID, status: str) -> None:
         """Efficiently update agent status without loading full entity."""
         async with self.async_session() as session:
             async with session.begin():
-                result = await session.execute(
-                    select(AgentModel).where(AgentModel.id == agent_id)
-                )
+                result = await session.execute(select(AgentModel).where(AgentModel.id == agent_id))
                 agent_model = result.scalar_one_or_none()
-                
+
                 if not agent_model:
                     raise AgentNotFoundError(str(agent_id))
-                
+
                 agent_model.status = status
                 agent_model.updated_at = datetime.utcnow()
                 await session.commit()
-    
+
     async def close(self):
         """Close database connections."""
         await self.engine.dispose()
-    
+
     def _model_to_domain(
         self,
         agent_model: AgentModel,
-        message_models: List[MessageModel],
+        message_models: Sequence[MessageModel],
     ) -> Agent:
         """Convert SQLAlchemy models to domain Agent."""
         # Convert messages
@@ -316,10 +310,10 @@ class PostgreSQLAgentRepository(IAgentRepository):
                     content=msg_model.content,
                     tool_calls=msg_model.tool_calls,
                     tool_call_id=msg_model.tool_call_id,
-                    metadata=msg_model.metadata or {},
+                    metadata=getattr(msg_model, "metadata_json", {}) or {},
                 )
             )
-        
+
         # Create agent
         agent = Agent(
             name=agent_model.name,
@@ -334,12 +328,12 @@ class PostgreSQLAgentRepository(IAgentRepository):
             max_iterations=agent_model.max_iterations,
             timeout_seconds=agent_model.timeout_seconds,
         )
-        
+
         # Override generated fields with stored values
         agent.id = agent_model.id
         agent.status = AgentStatus(agent_model.status)
         agent.created_at = agent_model.created_at
         agent.updated_at = agent_model.updated_at
         agent.conversation_history = messages
-        
+
         return agent

@@ -6,7 +6,7 @@ Provides pub/sub and task queue capabilities for agent communication.
 
 import asyncio
 import json
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, cast
 from uuid import uuid4
 
 from src.domain.exceptions import MessageQueueError
@@ -61,15 +61,17 @@ class RedisMessageQueue(IMessageQueue):
                 decode_responses=decode_responses,
             )
         else:
-            self.redis = aioredis.Redis(
+            # Use cast to Any to avoid overload-checking issues with redis typings
+            # mypy: the redis client has many overloads — narrow-ignore here
+            self.redis = cast(Any, aioredis.Redis(
                 host=host,
                 port=port,
                 password=password,
                 db=db,
                 decode_responses=decode_responses,
                 ssl=ssl,
-            )
-        self._pubsub = None
+            ))  # type: ignore[call-overload]
+        self._pubsub: Optional[Any] = None
         self._subscriptions: Dict[str, asyncio.Task] = {}
 
     @classmethod
@@ -136,13 +138,16 @@ class RedisMessageQueue(IMessageQueue):
             if self._pubsub is None:
                 self._pubsub = self.redis.pubsub()
 
+            # Cast to Any for dynamic pubsub implementation (library-specific)
+            pubsub: Any = self._pubsub
+
             # Subscribe to topic
-            await self._pubsub.subscribe(topic)
+            await pubsub.subscribe(topic)
 
             # Create listener task
             async def listener():
                 """Background task that listens for messages."""
-                async for message in self._pubsub.listen():
+                async for message in pubsub.listen():
                     if message["type"] == "message":
                         try:
                             payload = json.loads(message["data"])
@@ -224,7 +229,8 @@ class RedisMessageQueue(IMessageQueue):
 
         # Close pubsub
         if self._pubsub:
-            await self._pubsub.close()
+            pubsub: Any = self._pubsub
+            await pubsub.close()
 
         # Close Redis connection
         await self.redis.close()

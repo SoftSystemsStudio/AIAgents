@@ -5,7 +5,7 @@ Simple in-memory implementations for development and testing.
 For production, replace with database-backed repositories (PostgreSQL, MongoDB).
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from uuid import UUID
 
 from src.domain.exceptions import AgentNotFoundError
@@ -16,14 +16,14 @@ from src.domain.models import Agent, Tool
 class InMemoryAgentRepository(IAgentRepository):
     """
     In-memory agent repository.
-    
+
     WARNING: Data is lost on process restart. Use only for:
     - Development
     - Testing
     - Demos
-    
+
     For production, implement PostgreSQL/MongoDB repository.
-    
+
     TODO: Create PostgreSQL implementation with proper indexing
     TODO: Add audit logging for all mutations
     """
@@ -69,15 +69,16 @@ class InMemoryAgentRepository(IAgentRepository):
         agent = self._agents.get(agent_id)
         if not agent:
             raise AgentNotFoundError(str(agent_id))
-        
+
         from src.domain.models import AgentStatus
+
         agent.update_status(AgentStatus(status))
 
 
 class InMemoryToolRegistry(IToolRegistry):
     """
     In-memory tool registry.
-    
+
     Stores available tools and their handlers.
     Thread-safe for concurrent access.
     """
@@ -89,7 +90,7 @@ class InMemoryToolRegistry(IToolRegistry):
     def register_tool(self, tool: Tool) -> None:
         """Register a tool."""
         self._tools[tool.name] = tool
-        
+
         # Index by capability
         if tool.required_capability:
             cap = tool.required_capability.value
@@ -113,13 +114,13 @@ class InMemoryToolRegistry(IToolRegistry):
     async def invoke_tool(
         self,
         tool_name: str,
-        parameters: Dict[str, any],
+        parameters: Dict[str, Any],
     ) -> Dict[str, any]:
         """
         Invoke a tool with parameters.
-        
+
         Dynamically imports and calls the tool's handler function.
-        
+
         RISK: Dynamic imports can be slow. Consider caching handlers.
         """
         from src.domain.exceptions import ToolExecutionError, ToolNotFoundError
@@ -133,14 +134,14 @@ class InMemoryToolRegistry(IToolRegistry):
             # Import handler module
             module = importlib.import_module(tool.handler_module)
             handler_func = getattr(module, tool.handler_function)
-            
+
             # Invoke handler
             result = handler_func(**parameters)
-            
+
             # Handle async handlers
             if asyncio.iscoroutine(result):
                 result = await result
-            
+
             return {"success": True, "result": result}
 
         except Exception as e:

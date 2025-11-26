@@ -51,7 +51,7 @@ class ILLMProvider(ABC):
         pass
 
     @abstractmethod
-    async def stream_completion(
+    def stream_completion(
         self,
         messages: List[Message],
         model: str,

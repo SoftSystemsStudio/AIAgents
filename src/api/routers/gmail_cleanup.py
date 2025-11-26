@@ -9,7 +9,7 @@ Provides REST API for:
 - Managing cleanup policies
 """
 
-from typing import Optional
+from typing import Optional, Any, Dict
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -145,7 +145,7 @@ def get_inbox_service(
 async def analyze_inbox(
     request: AnalyzeRequest,
     service: InboxHygieneService = Depends(get_inbox_service),
-):
+) -> Dict[str, Any]:
     """
     Analyze inbox and return recommendations without executing any actions.
     
@@ -169,7 +169,7 @@ async def analyze_inbox(
 async def preview_cleanup(
     request: PreviewRequest,
     service: InboxHygieneService = Depends(get_inbox_service),
-):
+) -> Dict[str, Any]:
     """
     Preview what cleanup would do without executing.
     
@@ -192,7 +192,7 @@ async def preview_cleanup(
 async def execute_cleanup(
     request: ExecuteRequest,
     service: InboxHygieneService = Depends(get_inbox_service),
-):
+) -> Dict[str, Any]:
     """
     Execute cleanup and return results.
     
@@ -217,7 +217,7 @@ async def execute_cleanup(
 async def quick_cleanup(
     request: QuickCleanupRequest,
     service: InboxHygieneService = Depends(get_inbox_service),
-):
+) -> Dict[str, Any]:
     """
     Quick cleanup with sensible defaults.
     
@@ -239,7 +239,7 @@ async def quick_cleanup(
 async def get_health_score(
     user_id: str,
     service: InboxHygieneService = Depends(get_inbox_service),
-):
+) -> Dict[str, Any]:
     """
     Calculate mailbox health score (0-100).
     
@@ -260,7 +260,7 @@ async def get_health_score(
 
 
 @router.post("/policy", summary="Create or update cleanup policy")
-async def create_policy(request: CreatePolicyRequest):
+async def create_policy(request: CreatePolicyRequest) -> Dict[str, Any]:
     """
     Create or update a cleanup policy.
     
@@ -294,7 +294,7 @@ async def create_policy(request: CreatePolicyRequest):
 
 
 @router.get("/policy/{user_id}/{policy_id}", summary="Get cleanup policy")
-async def get_policy(user_id: str, policy_id: str):
+async def get_policy(user_id: str, policy_id: str) -> Dict[str, Any]:
     """
     Retrieve a cleanup policy by ID.
     
@@ -305,7 +305,7 @@ async def get_policy(user_id: str, policy_id: str):
 
 
 @router.get("/runs/{user_id}", summary="List cleanup runs for user")
-async def list_runs(user_id: str, limit: int = 10):
+async def list_runs(user_id: str, limit: int = 10) -> Dict[str, Any]:
     """
     List recent cleanup runs for a user.
     
@@ -316,7 +316,7 @@ async def list_runs(user_id: str, limit: int = 10):
 
 
 @router.get("/runs/{user_id}/{run_id}", summary="Get cleanup run details")
-async def get_run(user_id: str, run_id: str):
+async def get_run(user_id: str, run_id: str) -> Dict[str, Any]:
     """
     Get detailed information about a specific cleanup run.
     

@@ -17,7 +17,14 @@ except ImportError:
     ASYNCPG_AVAILABLE = False
     asyncpg = None  # type: ignore
 
-from src.domain.cleanup_policy import CleanupPolicy, CleanupRule, RetentionPolicy
+from src.domain.cleanup_policy import (
+    CleanupPolicy,
+    CleanupRule,
+    RetentionPolicy,
+    CleanupAction,
+    RuleCondition,
+    LabelingRule,
+)
 from src.domain.metrics import CleanupRun, CleanupStatus, CleanupAction as MetricAction, ActionStatus
 
 
@@ -74,9 +81,9 @@ class InMemoryGmailCleanupRepository(GmailCleanupRepository):
     Data is lost when process restarts.
     """
     
-    def __init__(self):
-        self._policies: dict = {}  # {user_id: {policy_id: CleanupPolicy}}
-        self._runs: dict = {}  # {user_id: [CleanupRun]}
+    def __init__(self) -> None:
+        self._policies: Dict[str, Dict[str, CleanupPolicy]] = {}  # {user_id: {policy_id: CleanupPolicy}}
+        self._runs: Dict[str, List[CleanupRun]] = {}  # {user_id: [CleanupRun]}
     
     async def save_policy(self, policy: CleanupPolicy) -> None:
         """Save or update cleanup policy."""
@@ -183,52 +190,119 @@ class PostgresGmailCleanupRepository(GmailCleanupRepository):
             "id": policy.id,
             "user_id": policy.user_id,
             "name": policy.name,
-            "rules": [
+            "description": getattr(policy, "description", ""),
+            "cleanup_rules": [
                 {
-                    "sender_domain": rule.sender_domain,
-                    "older_than_days": rule.older_than_days,
-                    "category": rule.category.value if rule.category else None,
-                    "action": rule.action.value,
+                    "id": rule.id,
+                    "name": rule.name,
+                    "description": rule.description,
+                    "condition_type": rule.condition_type.value if hasattr(rule.condition_type, "value") else str(rule.condition_type),
+                    "condition_value": rule.condition_value,
+                    "action": rule.action.value if hasattr(rule.action, "value") else str(rule.action),
+                    "action_params": getattr(rule, "action_params", {}),
+                    "enabled": getattr(rule, "enabled", True),
+                    "priority": getattr(rule, "priority", 100),
+                    "created_at": rule.created_at,
                 }
-                for rule in policy.rules
+                for rule in getattr(policy, "cleanup_rules", [])
             ],
-            "retention": {
-                "keep_starred": policy.retention.keep_starred,
-                "keep_important": policy.retention.keep_important,
-                "keep_unread": policy.retention.keep_unread,
-                "keep_recent_days": policy.retention.keep_recent_days,
-            } if policy.retention else None,
-            "dry_run": policy.dry_run,
+            "labeling_rules": [
+                {
+                    "id": lr.id,
+                    "name": lr.name,
+                    "label_to_apply": lr.label_to_apply,
+                    "condition_type": lr.condition_type.value if hasattr(lr.condition_type, "value") else str(lr.condition_type),
+                    "condition_value": lr.condition_value,
+                    "enabled": getattr(lr, "enabled", True),
+                }
+                for lr in getattr(policy, "labeling_rules", [])
+            ],
+            "retention_policy": (
+                {
+                    "id": rp.id,
+                    "name": rp.name,
+                    "description": rp.description,
+                    "rules": getattr(rp, "rules", []),
+                    "default_retention_days": getattr(rp, "default_retention_days", 365),
+                    "enabled": getattr(rp, "enabled", True),
+                }
+                if (rp := getattr(policy, "retention_policy", None)) is not None
+                else None
+            ),
+            "auto_archive_promotions": getattr(policy, "auto_archive_promotions", False),
+            "auto_archive_social": getattr(policy, "auto_archive_social", False),
+            "auto_mark_read_old": getattr(policy, "auto_mark_read_old", False),
+            "old_threshold_days": getattr(policy, "old_threshold_days", 30),
+            "enabled": getattr(policy, "enabled", True),
             "created_at": policy.created_at,
             "updated_at": policy.updated_at,
         }
     
     def _dict_to_policy(self, data: Dict[str, Any]) -> CleanupPolicy:
         """Convert dict from storage to policy."""
-        from src.domain.email_thread import EmailCategory, CleanupAction as Action
-        
-        rules = []
-        for rule_data in data["rules"]:
+        def _parse_datetime(val: Any) -> datetime:
+            if isinstance(val, datetime):
+                return val
+            if isinstance(val, str):
+                try:
+                    return datetime.fromisoformat(val)
+                except Exception:
+                    return datetime.utcnow()
+            return datetime.utcnow()
+
+        rules: List[CleanupRule] = []
+        for rule_data in data.get("cleanup_rules", []):
+            cond = rule_data.get("condition_type")
+            try:
+                cond_enum = RuleCondition(cond) if cond else RuleCondition.SENDER_MATCHES
+            except Exception:
+                cond_enum = RuleCondition.SENDER_MATCHES
+
+            try:
+                action_enum = CleanupAction(rule_data.get("action")) if rule_data.get("action") else CleanupAction.SKIP
+            except Exception:
+                action_enum = CleanupAction.SKIP
+
             rules.append(CleanupRule(
-                sender_domain=rule_data.get("sender_domain"),
-                older_than_days=rule_data.get("older_than_days"),
-                category=EmailCategory(rule_data["category"]) if rule_data.get("category") else None,
-                action=Action(rule_data["action"]),
+                id=rule_data.get("id", str(uuid.uuid4())),
+                name=rule_data.get("name", ""),
+                description=rule_data.get("description", ""),
+                condition_type=cond_enum,
+                condition_value=rule_data.get("condition_value", ""),
+                action=action_enum,
+                action_params=rule_data.get("action_params", {}),
+                enabled=rule_data.get("enabled", True),
+                priority=rule_data.get("priority", 100),
+                created_at=_parse_datetime(rule_data.get("created_at")),
             ))
-        
+
         retention = None
-        if data.get("retention"):
-            retention = RetentionPolicy(**data["retention"])
-        
+        if data.get("retention_policy"):
+            rp = data["retention_policy"]
+            retention = RetentionPolicy(
+                id=rp.get("id", str(uuid.uuid4())),
+                name=rp.get("name", ""),
+                description=rp.get("description", ""),
+                rules=rp.get("rules", []),
+                default_retention_days=rp.get("default_retention_days", 365),
+                enabled=rp.get("enabled", True),
+            )
+
         return CleanupPolicy(
             id=data["id"],
             user_id=data["user_id"],
             name=data["name"],
-            rules=rules,
-            retention=retention,
-            dry_run=data.get("dry_run", False),
-            created_at=data["created_at"],
-            updated_at=data.get("updated_at"),
+            description=data.get("description", ""),
+            cleanup_rules=rules,
+            labeling_rules=[],
+            retention_policy=retention,
+            auto_archive_promotions=data.get("auto_archive_promotions", False),
+            auto_archive_social=data.get("auto_archive_social", False),
+            auto_mark_read_old=data.get("auto_mark_read_old", False),
+            old_threshold_days=data.get("old_threshold_days", 30),
+            enabled=data.get("enabled", True),
+            created_at=_parse_datetime(data.get("created_at")),
+            updated_at=_parse_datetime(data.get("updated_at")) if data.get("updated_at") is not None else datetime.utcnow(),
         )
     
     async def save_policy(self, policy: CleanupPolicy) -> None:

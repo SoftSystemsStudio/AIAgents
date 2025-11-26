@@ -23,7 +23,7 @@ class MemoryEntry:
     id: UUID = field(default_factory=uuid4)
     agent_id: UUID = field(default_factory=uuid4)
     session_id: str = ""  # Group related conversations
-    message: Message = None
+    message: Optional[Message] = None
     embedding: Optional[List[float]] = None  # Vector embedding for semantic search
     timestamp: datetime = field(default_factory=datetime.utcnow)
     metadata: Dict[str, Any] = field(default_factory=dict)

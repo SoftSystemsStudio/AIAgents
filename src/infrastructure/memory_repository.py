@@ -12,84 +12,91 @@ from uuid import UUID
 from datetime import datetime
 import json
 
-from sqlalchemy import Column, String, Float, DateTime, Text, Index
+from sqlalchemy import String, Float, DateTime, Text, Index
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB, ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.infrastructure.db_repositories import Base
-from src.domain.memory import MemoryEntry, Message, MessageRole
+from src.domain.memory import MemoryEntry
+from src.domain.models import Message, MessageRole
 
 
 class MemoryEntryModel(Base):
     """SQLAlchemy model for memory entries."""
-    
+
     __tablename__ = "memory_entries"
-    
-    id = Column(PGUUID(as_uuid=True), primary_key=True)
-    agent_id = Column(PGUUID(as_uuid=True), nullable=False, index=True)
-    session_id = Column(String(255), nullable=False, index=True)
-    
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    agent_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    session_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
     # Message content
-    role = Column(String(50), nullable=False)
-    content = Column(Text, nullable=False)
-    
+    role: Mapped[str] = mapped_column(String(50), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
     # Semantic search
-    embedding = Column(ARRAY(Float), nullable=True)
-    
+    embedding: Mapped[Optional[list[float]]] = mapped_column(ARRAY(Float), nullable=True)
+
     # Metadata
-    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
-    importance_score = Column(Float, default=1.0)
-    metadata = Column(JSONB, default={})
-    
+    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    importance_score: Mapped[float] = mapped_column(Float, default=1.0)
+    metadata_json: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+
     # Indexes for performance
     __table_args__ = (
-        Index('idx_agent_session', 'agent_id', 'session_id'),
-        Index('idx_timestamp', 'timestamp'),
+        Index("idx_agent_session", "agent_id", "session_id"),
+        Index("idx_timestamp", "timestamp"),
     )
 
 
 class PostgresMemoryRepository:
     """
     PostgreSQL repository for conversation memory.
-    
+
     Provides persistent storage with:
     - Fast session-based retrieval
     - Support for embedding storage (for future vector search)
     - Efficient querying by agent and timeframe
     """
-    
+
     def __init__(self, session: AsyncSession):
         """
         Initialize repository.
-        
+
         Args:
             session: SQLAlchemy async session
         """
         self.session = session
-    
+
     async def save_memory(self, entry: MemoryEntry) -> None:
         """
         Save a memory entry to database.
-        
+
         Args:
             entry: Memory entry to save
         """
+        # Ensure message is present; MemoryEntry.message is Optional[Message]
+        msg = entry.message
+        if msg is None:
+            raise ValueError("MemoryEntry.message must be set when saving to Postgres")
+
         model = MemoryEntryModel(
             id=entry.id,
             agent_id=entry.agent_id,
             session_id=entry.session_id,
-            role=entry.message.role.value,
-            content=entry.message.content,
+            role=msg.role.value,
+            content=msg.content,
             embedding=entry.embedding,
             timestamp=entry.timestamp,
             importance_score=entry.importance_score,
-            metadata=entry.metadata,
+            metadata_json=entry.metadata,
         )
-        
+
         self.session.add(model)
         await self.session.commit()
-    
+
     async def get_by_session(
         self,
         session_id: str,
@@ -97,11 +104,11 @@ class PostgresMemoryRepository:
     ) -> List[MemoryEntry]:
         """
         Retrieve all memories for a session.
-        
+
         Args:
             session_id: Session identifier
             limit: Optional maximum number of memories
-            
+
         Returns:
             List of memory entries, chronologically ordered
         """
@@ -110,15 +117,15 @@ class PostgresMemoryRepository:
             .where(MemoryEntryModel.session_id == session_id)
             .order_by(MemoryEntryModel.timestamp.asc())
         )
-        
+
         if limit:
             query = query.limit(limit)
-        
+
         result = await self.session.execute(query)
         models = result.scalars().all()
-        
+
         return [self._model_to_entry(model) for model in models]
-    
+
     async def get_by_agent(
         self,
         agent_id: UUID,
@@ -127,33 +134,33 @@ class PostgresMemoryRepository:
     ) -> List[MemoryEntry]:
         """
         Retrieve memories for an agent.
-        
+
         Args:
             agent_id: Agent identifier
             session_id: Optional session filter
             limit: Optional maximum number of memories
-            
+
         Returns:
             List of memory entries
         """
         conditions = [MemoryEntryModel.agent_id == agent_id]
         if session_id:
             conditions.append(MemoryEntryModel.session_id == session_id)
-        
+
         query = (
             select(MemoryEntryModel)
             .where(and_(*conditions))
             .order_by(MemoryEntryModel.timestamp.desc())
         )
-        
+
         if limit:
             query = query.limit(limit)
-        
+
         result = await self.session.execute(query)
         models = result.scalars().all()
-        
+
         return [self._model_to_entry(model) for model in models]
-    
+
     async def search_by_importance(
         self,
         agent_id: UUID,
@@ -162,12 +169,12 @@ class PostgresMemoryRepository:
     ) -> List[MemoryEntry]:
         """
         Retrieve high-importance memories for an agent.
-        
+
         Args:
             agent_id: Agent identifier
             min_importance: Minimum importance score threshold
             limit: Maximum memories to return
-            
+
         Returns:
             List of important memory entries
         """
@@ -182,54 +189,50 @@ class PostgresMemoryRepository:
             .order_by(MemoryEntryModel.importance_score.desc())
             .limit(limit)
         )
-        
+
         result = await self.session.execute(query)
         models = result.scalars().all()
-        
+
         return [self._model_to_entry(model) for model in models]
-    
+
     async def delete_session(self, session_id: str) -> int:
         """
         Delete all memories for a session.
-        
+
         Args:
             session_id: Session identifier
-            
+
         Returns:
             Number of memories deleted
         """
-        query = select(func.count()).where(
-            MemoryEntryModel.session_id == session_id
-        )
+        query = select(func.count()).where(MemoryEntryModel.session_id == session_id)
         result = await self.session.execute(query)
         count = result.scalar()
-        
+
         # Delete memories
         delete_query = MemoryEntryModel.__table__.delete().where(
             MemoryEntryModel.session_id == session_id
         )
         await self.session.execute(delete_query)
         await self.session.commit()
-        
+
         return count or 0
-    
+
     async def get_stats(self, agent_id: UUID) -> Dict[str, Any]:
         """
         Get memory statistics for an agent.
-        
+
         Args:
             agent_id: Agent identifier
-            
+
         Returns:
             Statistics dictionary
         """
         # Count total memories
-        count_query = select(func.count()).where(
-            MemoryEntryModel.agent_id == agent_id
-        )
+        count_query = select(func.count()).where(MemoryEntryModel.agent_id == agent_id)
         count_result = await self.session.execute(count_query)
         total = count_result.scalar() or 0
-        
+
         if total == 0:
             return {
                 "total_memories": 0,
@@ -238,25 +241,24 @@ class PostgresMemoryRepository:
                 "newest": None,
                 "avg_importance": 0.0,
             }
-        
+
         # Get sessions count
-        sessions_query = (
-            select(func.count(func.distinct(MemoryEntryModel.session_id)))
-            .where(MemoryEntryModel.agent_id == agent_id)
+        sessions_query = select(func.count(func.distinct(MemoryEntryModel.session_id))).where(
+            MemoryEntryModel.agent_id == agent_id
         )
         sessions_result = await self.session.execute(sessions_query)
         sessions_count = sessions_result.scalar() or 0
-        
+
         # Get timestamp range
         range_query = select(
             func.min(MemoryEntryModel.timestamp),
             func.max(MemoryEntryModel.timestamp),
             func.avg(MemoryEntryModel.importance_score),
         ).where(MemoryEntryModel.agent_id == agent_id)
-        
+
         range_result = await self.session.execute(range_query)
         oldest, newest, avg_importance = range_result.one()
-        
+
         return {
             "total_memories": total,
             "sessions": sessions_count,
@@ -264,14 +266,14 @@ class PostgresMemoryRepository:
             "newest": newest,
             "avg_importance": float(avg_importance) if avg_importance else 0.0,
         }
-    
+
     def _model_to_entry(self, model: MemoryEntryModel) -> MemoryEntry:
         """Convert database model to domain object."""
         message = Message(
             role=MessageRole(model.role),
             content=model.content,
         )
-        
+
         return MemoryEntry(
             id=model.id,
             agent_id=model.agent_id,
@@ -279,6 +281,6 @@ class PostgresMemoryRepository:
             message=message,
             embedding=model.embedding,
             timestamp=model.timestamp,
-            metadata=model.metadata or {},
+            metadata=getattr(model, "metadata_json", {}) or {},
             importance_score=model.importance_score,
         )

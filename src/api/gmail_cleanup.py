@@ -32,6 +32,8 @@ class CleanupRuleRequest(BaseModel):
         description="Email categories to delete (newsletters, promotions, social)",
         example=["newsletters", "promotions"]
     )
+    # mypy: pydantic Field overloads are noisy here
+    # type: ignore[call-overload]
     older_than_days: Optional[int] = Field(
         default=90,
         description="Only delete emails older than N days",
@@ -43,6 +45,8 @@ class CleanupRuleRequest(BaseModel):
         description="Specific sender emails to delete from",
         example=["noreply@example.com", "marketing@company.com"]
     )
+    # mypy: pydantic Field overloads are noisy here
+    # type: ignore[call-overload]
     exclude_starred: bool = Field(
         default=True,
         description="Keep starred emails"
@@ -112,7 +116,7 @@ class UsageResponse(BaseModel):
 async def analyze_inbox(
     customer: Customer = Depends(get_current_customer),
     # TODO: Add use case dependencies
-):
+) -> InboxAnalysisResponse:
     """
     Analyze customer's Gmail inbox.
     
@@ -152,7 +156,7 @@ async def dry_run_cleanup(
     rules: CleanupRuleRequest,
     customer: Customer = Depends(get_current_customer),
     # TODO: Add use case dependencies
-):
+) -> DryRunResponse:
     """
     Preview cleanup results without deleting anything.
     
@@ -195,7 +199,7 @@ async def dry_run_cleanup(
 async def execute_cleanup(
     rules: CleanupRuleRequest,
     customer: Customer = Depends(get_current_customer),
-):
+) -> CleanupExecutionResponse:
     """
     Execute Gmail cleanup - PERMANENTLY DELETE emails.
     
@@ -255,7 +259,7 @@ async def get_cleanup_history(
     limit: int = 50,
     customer: Customer = Depends(get_current_customer),
     # TODO: Add repository dependency
-):
+) -> CleanupHistoryResponse:
     """
     Get customer's cleanup history.
     
@@ -293,7 +297,7 @@ async def get_cleanup_history(
 @router.get("/usage", response_model=UsageResponse)
 async def get_usage_stats(
     customer: Customer = Depends(get_current_customer),
-):
+) -> UsageResponse:
     """
     Get customer's usage stats and quota limits.
     
@@ -328,7 +332,7 @@ async def get_usage_stats(
 async def reset_customer_quota(
     customer_id: UUID,
     current_customer: Customer = Depends(get_current_customer),
-):
+) -> None:
     """
     Admin only: Reset customer quota.
     
