@@ -31,6 +31,12 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Optimize SVGs and images
+        run: |
+          # optimize SVGs with svgo and raster images with imagemin
+          npx -y svgo "assets/*.svg" || true
+          npx -y imagemin-cli "assets/*.{png,jpg,jpeg,svg,gif}" --out-dir=assets/ || true
+
       - name: Run accessibility scan (pa11y)
         run: |
           # serve the built site and run pa11y against it
@@ -42,5 +48,6 @@ jobs:
             sleep 1
           done
           echo "Running pa11y against http://127.0.0.1:8080"
-          npx pa11y http://127.0.0.1:8080 || true
+          # Run pa11y and fail on accessibility errors (exit code != 0)
+          npx -y pa11y http://127.0.0.1:8080
           kill $PID || true
