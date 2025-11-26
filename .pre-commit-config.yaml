@@ -44,3 +44,9 @@ repos:
         pass_filenames: false
         always_run: true
         args: ["-v", "-m", "unit"]
+      - id: image-optimize
+        name: image-optimize
+        entry: tools/optimize_images.sh
+        language: script
+        files: ^assets/.*\.(png|jpg|jpeg|gif|svg)$
+        pass_filenames: false

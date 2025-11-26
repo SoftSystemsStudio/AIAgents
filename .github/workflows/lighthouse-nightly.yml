@@ -26,10 +26,24 @@ jobs:
           npx http-server build -p 8080 --silent &
           echo $! > http.pid
 
-      - name: Run Lighthouse
+      - name: Run Lighthouse and enforce thresholds
         run: |
           npx -y lighthouse http://127.0.0.1:8080 --output=json --output-path=./lighthouse-report.json --quiet || true
           echo "Lighthouse report saved to lighthouse-report.json"
+          # Read scores (0..1) and fail if below thresholds
+          PERF=$(jq '.categories.performance.score' lighthouse-report.json)
+          ACCESS=$(jq '.categories.accessibility.score' lighthouse-report.json)
+          echo "Performance: $PERF, Accessibility: $ACCESS"
+          # thresholds
+          MIN_PERF=0.80
+          MIN_ACCESS=0.90
+          PERF_OK=$(awk -v v="$PERF" -v t="$MIN_PERF" 'BEGIN{ if (v+0 >= t+0) print 1; else print 0 }')
+          ACCESS_OK=$(awk -v v="$ACCESS" -v t="$MIN_ACCESS" 'BEGIN{ if (v+0 >= t+0) print 1; else print 0 }')
+          if [ "$PERF_OK" -ne 1 ] || [ "$ACCESS_OK" -ne 1 ]; then
+            echo "Lighthouse thresholds not met (perf >= $MIN_PERF, access >= $MIN_ACCESS)"
+            cat lighthouse-report.json
+            exit 2
+          fi
 
       - name: Upload Lighthouse report
         uses: actions/upload-artifact@v4
