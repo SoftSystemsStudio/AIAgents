@@ -1,6 +1,9 @@
 ---
 name: Deploy to Vercel
 
+permissions:
+  contents: read
+
 # Note: set the following repository secrets in GitHub:
 # - VERCEL_TOKEN (personal token)
 # - VERCEL_ORG_ID
